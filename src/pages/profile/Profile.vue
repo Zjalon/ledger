@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import { showConfirmDialog, showToast } from "vant";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
+import { LoginAPI } from "@/api/endpoints/gitee";
 import { useAuth } from "@/composables/use-auth";
 import { lastSyncAt } from "@/composables/use-sync-status";
 import { useCurrentUser } from "@/composables/useCurrentUser";
@@ -13,6 +14,10 @@ const { user, updateNickname } = useCurrentUser();
 
 const showEditDialog = ref(false);
 const editNickname = ref("");
+
+const currentUserId = computed(
+    () => user.value?.id ?? LoginAPI.getLocalToken()?.accessToken ?? "",
+);
 
 const lastSyncLabel = computed(() => {
     if (!lastSyncAt.value) {
@@ -78,34 +83,43 @@ const onLogout = async () => {
                 </div>
             </div>
             <div class="content__scroll">
-            <van-cell-group inset>
-                <van-cell title="上次同步成功" :value="lastSyncLabel" />
-                <van-cell
-                    title="支出分类"
-                    is-link
-                    @click="
-                        router.push({
-                            name: 'profile-categories',
-                            params: { kind: 'expense' },
-                        })
-                    "
-                />
-                <van-cell
-                    title="收入分类"
-                    is-link
-                    @click="
-                        router.push({
-                            name: 'profile-categories',
-                            params: { kind: 'income' },
-                        })
-                    "
-                />
-            </van-cell-group>
-            <div class="logout-actions">
-                <van-button round block plain type="danger" @click="onLogout">
-                    退出登录
-                </van-button>
-            </div>
+                <van-cell-group inset>
+                    <van-cell title="上次同步成功" :value="lastSyncLabel" />
+                    <van-cell
+                        title="支出分类"
+                        is-link
+                        @click="
+                            router.push({
+                                name: 'profile-categories',
+                                params: { kind: 'expense' },
+                            })
+                        "
+                    />
+                    <van-cell
+                        title="收入分类"
+                        is-link
+                        @click="
+                            router.push({
+                                name: 'profile-categories',
+                                params: { kind: 'income' },
+                            })
+                        "
+                    />
+                    <van-cell
+                        v-if="currentUserId"
+                        title="账户显示顺序"
+                        is-link
+                        @click="
+                            router.push({ name: 'profile-account-order' })
+                        "
+                    />
+                </van-cell-group>
+
+                <div class="logout-actions">
+                    <van-button round block plain type="danger" @click="onLogout">
+                        退出登录
+                    </van-button>
+                </div>
             </div>
         </div>
 

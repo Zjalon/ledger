@@ -48,6 +48,12 @@ const router = createRouter({
                             "../pages/profile/categories/CategoryManage.vue"
                         ),
                 },
+                {
+                    path: "profile/account-order",
+                    name: "profile-account-order",
+                    component: () =>
+                        import("../pages/profile/accounts/AccountOrder.vue"),
+                },
             ],
         },
     ],

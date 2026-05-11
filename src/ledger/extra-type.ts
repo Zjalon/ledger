@@ -110,6 +110,8 @@ export type PersonalMeta = {
     scheduleds?: Scheduled[];
     customCSS?: string;
     homeWidgets?: string[]; // 首页展示的widget列表，元素为widget id
+    /** 资产页账户列表显示顺序（账户 id，前者靠前）；存于 meta.personal[当前用户 id] */
+    accountDisplayOrder?: string[];
     assistant?: {
         bigmodel?: {
             apiKey?: string;

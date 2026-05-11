@@ -6,15 +6,20 @@ import {
     showToast,
 } from "vant";
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { LoginAPI } from "@/api/endpoints/gitee";
 import { useSync } from "@/composables/use-sync";
 import { shortId } from "@/database/id";
 import type { Full } from "@/database/stash";
 import type { Account } from "@/database/tables/account";
+import { applyAccountDisplayOrder } from "@/ledger/account-order";
 import { amountToNumber, numberToAmount } from "@/ledger/bill";
+import type { PersonalMeta } from "@/ledger/extra-type";
 
 const { selectedBookId, ep } = useSync();
 
 const accounts = ref<Full<Account>[]>([]);
+/** 当前用户在 meta.personal 中保存的账户排序；无则按余额排序 */
+const ledgerAccountOrder = ref<string[] | undefined>(undefined);
 let unsubscribe: (() => void) | undefined;
 
 const fmt = new Intl.NumberFormat("zh-CN", {
@@ -51,11 +56,16 @@ const totalRaw = computed(() =>
 
 const totalLabel = computed(() => fmt.format(amountToNumber(totalRaw.value)));
 
-const sortedAccounts = computed(() =>
-    [...accounts.value].sort(
+const sortedAccounts = computed(() => {
+    const list = accounts.value;
+    const ord = ledgerAccountOrder.value;
+    if (ord !== undefined && ord.length > 0) {
+        return applyAccountDisplayOrder(list, ord);
+    }
+    return [...list].sort(
         (a, b) => (b.initialBalance ?? 0) - (a.initialBalance ?? 0),
-    ),
-);
+    );
+});
 
 const formVisible = ref(false);
 const formEditingId = ref<string | null>(null);
@@ -273,7 +283,19 @@ async function loadAccounts() {
     const bookId = selectedBookId.value;
     if (!bookId) return;
     try {
-        accounts.value = await ep.tableGetAllItems<Account>(bookId, "accounts");
+        const uid = LoginAPI.getLocalToken()?.accessToken;
+        const [list, meta] = await Promise.all([
+            ep.tableGetAllItems<Account>(bookId, "accounts"),
+            ep.getLedgerMeta(bookId),
+        ]);
+        accounts.value = list;
+        if (uid) {
+            ledgerAccountOrder.value = (
+                meta.personal as Record<string, PersonalMeta> | undefined
+            )?.[uid]?.accountDisplayOrder;
+        } else {
+            ledgerAccountOrder.value = undefined;
+        }
     } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e ?? "未知错误");
         showToast(`加载账户失败：${msg}`);
@@ -283,7 +305,9 @@ async function loadAccounts() {
 onMounted(async () => {
     await loadAccounts();
     unsubscribe = ep.onChange(async ({ bookId }) => {
-        accounts.value = await ep.tableGetAllItems<Account>(bookId, "accounts");
+        if (bookId === selectedBookId.value) {
+            await loadAccounts();
+        }
     });
 });
 

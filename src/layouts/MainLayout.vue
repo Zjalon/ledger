@@ -15,8 +15,12 @@ usePeriodicBookFullSync(entryReady);
 
 const showRecordSheet = ref(false);
 
-/** 分类设置页自带 van-nav-bar，隐藏外壳顶栏避免双层遮挡 */
-const hideShellHeader = computed(() => route.name === "profile-categories");
+/** 子页自带 van-nav-bar，隐藏外壳顶栏避免双层遮挡 */
+const hideShellHeader = computed(
+    () =>
+        route.name === "profile-categories" ||
+        route.name === "profile-account-order",
+);
 
 const tabs = [
     { path: "/", icon: "records", label: "账本" },
