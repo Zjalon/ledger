@@ -338,7 +338,7 @@ function openToPickerFn() {
         :show="show"
         position="bottom"
         round
-        :style="{ height: '88%', maxHeight: '640px' }"
+        :style="{ height: '92%', maxHeight: '720px' }"
         safe-area-inset-bottom
         class="record-sheet-popup"
         @update:show="emit('update:show', $event)"
