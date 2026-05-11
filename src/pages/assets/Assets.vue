@@ -301,15 +301,18 @@ onUnmounted(() => {
         </div>
 
         <div class="assets-inner">
-            <header class="assets-hero">
-                <p class="assets-kicker">全部账户</p>
-                <div class="assets-total-wrap">
-                    <p class="assets-total-label">折合总额（CNY）</p>
-                    <p class="assets-total-value">{{ totalLabel }}</p>
-                </div>
-                <div class="assets-hero__accent" aria-hidden="true" />
-            </header>
+            <div class="assets-scroll-head">
+                <header class="assets-hero">
+                    <p class="assets-kicker">全部账户</p>
+                    <div class="assets-total-wrap">
+                        <p class="assets-total-label">折合总额（CNY）</p>
+                        <p class="assets-total-value">{{ totalLabel }}</p>
+                    </div>
+                    <div class="assets-hero__accent" aria-hidden="true" />
+                </header>
+            </div>
 
+            <div class="assets-scroll-body">
             <section class="assets-section">
                 <div class="assets-section-head">
                     <h2 class="assets-section-title">账户列表</h2>
@@ -364,7 +367,6 @@ onUnmounted(() => {
                                     <p class="assets-card__name">
                                         {{ acc.name }}
                                     </p>
-                                    <p class="assets-card__meta">初始余额</p>
                                 </div>
                                 <p class="assets-card__amount">
                                     {{ balanceLabel(acc.initialBalance) }}
@@ -403,6 +405,7 @@ onUnmounted(() => {
                     </div>
                 </div>
             </section>
+            </div>
         </div>
 
         <van-action-sheet
@@ -427,7 +430,7 @@ onUnmounted(() => {
                     {{ balanceTarget.name }}
                 </p>
                 <p class="balance-sheet__hint">
-                    修改的是账户当前余额（与新建/编辑账户中的初始余额一致）。
+                    修改的是账户当前余额（与资产列表展示一致）。
                 </p>
                 <van-field
                     v-model="balanceYuanInput"
@@ -469,7 +472,7 @@ onUnmounted(() => {
                 />
                 <van-field
                     v-model="formBalanceYuan"
-                    label="初始余额"
+                    label="余额"
                     type="number"
                     placeholder="0.00"
                 />
@@ -614,12 +617,26 @@ onUnmounted(() => {
     z-index: 1;
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    padding: 16px 18px;
-    padding-bottom: 48px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0 18px;
     max-width: 480px;
     margin: 0 auto;
     width: 100%;
+}
+
+.assets-scroll-head {
+    flex-shrink: 0;
+    padding-top: 16px;
+}
+
+.assets-scroll-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 48px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .assets-hero {
@@ -830,16 +847,6 @@ onUnmounted(() => {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.assets-card__meta {
-    margin: 0;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--assets-muted);
-    opacity: 0.72;
 }
 
 .assets-card__amount {

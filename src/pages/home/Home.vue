@@ -153,26 +153,29 @@ onUnmounted(() => {
         </div>
 
         <div class="journal-inner">
-            <header class="journal-hero">
-                <p class="journal-kicker">今日</p>
-                <div class="journal-stats">
-                    <div class="journal-stat journal-stat--out">
-                        <span class="journal-stat__label">支出</span>
-                        <span class="journal-stat__value">{{
-                            todayExpenseLabel
-                        }}</span>
+            <div class="journal-scroll-head">
+                <header class="journal-hero">
+                    <p class="journal-kicker">今日</p>
+                    <div class="journal-stats">
+                        <div class="journal-stat journal-stat--out">
+                            <span class="journal-stat__label">支出</span>
+                            <span class="journal-stat__value">{{
+                                todayExpenseLabel
+                            }}</span>
+                        </div>
+                        <div class="journal-stat-divider" aria-hidden="true" />
+                        <div class="journal-stat journal-stat--in">
+                            <span class="journal-stat__label">收入</span>
+                            <span class="journal-stat__value">{{
+                                todayIncomeLabel
+                            }}</span>
+                        </div>
                     </div>
-                    <div class="journal-stat-divider" aria-hidden="true" />
-                    <div class="journal-stat journal-stat--in">
-                        <span class="journal-stat__label">收入</span>
-                        <span class="journal-stat__value">{{
-                            todayIncomeLabel
-                        }}</span>
-                    </div>
-                </div>
-                <div class="journal-hero__accent" aria-hidden="true" />
-            </header>
+                    <div class="journal-hero__accent" aria-hidden="true" />
+                </header>
+            </div>
 
+            <div class="journal-scroll-body">
             <section class="journal-section">
                 <h2 class="journal-section-title">今日流水</h2>
 
@@ -219,6 +222,7 @@ onUnmounted(() => {
                     </li>
                 </ol>
             </section>
+            </div>
         </div>
     </div>
 </template>
@@ -307,13 +311,27 @@ onUnmounted(() => {
     z-index: 1;
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    padding: 14px 16px;
-    /* 底栏已 fixed 占位；此处主要为中部「记一笔」球上半部分留出滚动空间 */
-    padding-bottom: 48px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0 16px;
     max-width: 480px;
     margin: 0 auto;
     width: 100%;
+}
+
+.journal-scroll-head {
+    flex-shrink: 0;
+    padding-top: 14px;
+}
+
+.journal-scroll-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    /* 底栏已 fixed 占位；此处主要为中部「记一笔」球上半部分留出滚动空间 */
+    padding-bottom: 48px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .journal-hero {

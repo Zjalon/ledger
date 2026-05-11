@@ -90,7 +90,9 @@ const onSyncClick = async () => {
             <div v-if="!entryReady" class="main-entry-loading">
                 <van-loading vertical size="36px">正在同步账本…</van-loading>
             </div>
-            <router-view v-else />
+            <div v-else class="main-view">
+                <router-view />
+            </div>
         </div>
         <nav v-show="entryReady" class="app-tabbar" aria-label="主导航">
             <div class="app-tabbar__surface">
@@ -153,6 +155,9 @@ const onSyncClick = async () => {
     --header-accent: var(--ledger-accent);
     --header-paper: rgba(255, 254, 251, 0.88);
 
+    position: sticky;
+    top: 0;
+    z-index: 120;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -251,6 +256,24 @@ const onSyncClick = async () => {
     min-height: 0;
     padding: 24px;
     background: var(--ledger-paper);
+}
+
+/* 让子页面根节点占满剩余高度并参与 min-height:0 收缩，否则内容撑开整页滚动 */
+.main-view {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.main-view > :deep(*) {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .app-tabbar {

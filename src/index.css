@@ -103,6 +103,9 @@ body {
 #app {
 	width: 100%;
 	min-height: 100vh;
+	height: 100vh;
+	max-height: 100vh;
+	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 	/* 仅左右安全区；底栏 fixed 后底部安全区在 tabbar 内处理 */
@@ -112,12 +115,16 @@ body {
 @supports (min-height: 100dvh) {
 	#app {
 		min-height: 100dvh;
+		height: 100dvh;
+		max-height: 100dvh;
 	}
 }
 
 @supports (-webkit-touch-callout: none) {
 	#app {
 		min-height: -webkit-fill-available;
+		height: -webkit-fill-available;
+		max-height: -webkit-fill-available;
 	}
 }
 
@@ -139,6 +146,8 @@ body {
 		body,
 		#app {
 			min-height: 100lvh;
+			height: 100lvh;
+			max-height: 100lvh;
 		}
 	}
 }

@@ -3,6 +3,7 @@ import { Scheduler } from "@/database/scheduler";
 import type { Action, BaseItem, Full } from "@/database/stash";
 import { BillIndexedDBStorage } from "@/database/storage";
 import type { Account } from "@/database/tables/account";
+import type { Transaction } from "@/database/tables/transaction";
 import type { User } from "@/database/tables/user";
 import type { Bill } from "@/ledger/type";
 import {
@@ -10,6 +11,7 @@ import {
     PROFILE_USERS_KEY,
 } from "@/sync/book-remote-layout";
 import { normalizeMetaSnapshot } from "@/sync/migrate-remote";
+import { accountBalanceDeltasFromTransactionActions } from "@/sync/transaction-account-balance";
 import { createTidal } from "@/tidal";
 import { createGiteeSyncer } from "@/tidal/gitee";
 import type { SyncEndpoint, SyncEndpointFactory } from "../type";
@@ -169,11 +171,45 @@ export const GiteeEndpoint: SyncEndpointFactory = {
                 overlap?: boolean,
             ) => {
                 if (tableName === "transactions") {
+                    const txActions = actions as Action<Transaction>[];
+                    const existing = (await repo.getAllItems(
+                        bookId,
+                    )) as Full<Transaction>[];
+                    const existingById = new Map(
+                        existing.map((t) => [t.id, t as Transaction]),
+                    );
+                    const balanceDeltas =
+                        accountBalanceDeltasFromTransactionActions(
+                            txActions,
+                            existingById,
+                        );
+
                     await repo.batch(
                         bookId,
                         actions as Action<Bill>[],
                         overlap,
                     );
+
+                    if (balanceDeltas.size > 0) {
+                        const list = [...(await readAccountsList(bookId))];
+                        let touched = false;
+                        for (const [accId, d] of balanceDeltas) {
+                            const idx = list.findIndex((x) => x.id === accId);
+                            if (idx < 0) {
+                                continue;
+                            }
+                            const prev = list[idx] as Account;
+                            list[idx] = {
+                                ...prev,
+                                initialBalance: (prev.initialBalance ?? 0) + d,
+                            };
+                            touched = true;
+                        }
+                        if (touched) {
+                            await writeAccountsList(bookId, list);
+                        }
+                    }
+
                     scheduler.schedule();
                     return;
                 }

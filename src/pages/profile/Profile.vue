@@ -55,26 +55,29 @@ const onLogout = async () => {
 <template>
     <div class="page">
         <div class="content">
-            <div v-if="user" class="user-card">
-                <van-image
-                    v-if="user.avatar"
-                    round
-                    width="64"
-                    height="64"
-                    :src="user.avatar"
-                />
-                <div class="user-info">
-                    <span class="user-nickname">{{ user.nickname }}</span>
-                    <van-button
-                        size="small"
-                        plain
-                        type="primary"
-                        @click="openEditNickname"
-                    >
-                        编辑昵称
-                    </van-button>
+            <div class="content__sticky">
+                <div v-if="user" class="user-card">
+                    <van-image
+                        v-if="user.avatar"
+                        round
+                        width="64"
+                        height="64"
+                        :src="user.avatar"
+                    />
+                    <div class="user-info">
+                        <span class="user-nickname">{{ user.nickname }}</span>
+                        <van-button
+                            size="small"
+                            plain
+                            type="primary"
+                            @click="openEditNickname"
+                        >
+                            编辑昵称
+                        </van-button>
+                    </div>
                 </div>
             </div>
+            <div class="content__scroll">
             <van-cell-group inset>
                 <van-cell title="上次同步成功" :value="lastSyncLabel" />
                 <van-cell
@@ -103,6 +106,7 @@ const onLogout = async () => {
                     退出登录
                 </van-button>
             </div>
+            </div>
         </div>
 
         <van-dialog
@@ -125,6 +129,7 @@ const onLogout = async () => {
 <style scoped>
 .page {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -134,8 +139,22 @@ const onLogout = async () => {
 }
 .content {
     flex: 1;
-    overflow-y: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     padding-top: 12px;
+}
+
+.content__sticky {
+    flex-shrink: 0;
+}
+
+.content__scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .user-card {
     display: flex;

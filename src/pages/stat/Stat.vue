@@ -6,7 +6,9 @@
             <div class="stat-atmosphere__grain" />
         </div>
         <div class="stat-inner">
-            <van-empty description="暂无数据" />
+            <div class="stat-scroll-body">
+                <van-empty description="暂无数据" />
+            </div>
         </div>
     </div>
 </template>
@@ -76,10 +78,20 @@
     flex: 1;
     min-height: 0;
     display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0 16px;
+}
+
+.stat-scroll-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px 16px;
-    overflow-y: auto;
+    padding: 24px 0;
+    -webkit-overflow-scrolling: touch;
 }
 
 .stat-inner :deep(.van-empty__description) {
