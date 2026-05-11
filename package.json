@@ -10,7 +10,8 @@
 		"preview": "vite preview --host --port 5173",
 		"check": "biome check --write",
 		"pre-commit": "pnpm run lint",
-		"prepare": "husky"
+		"prepare": "husky",
+		"screenshots:readme": "node scripts/capture-readme-screenshots.mjs"
 	},
 	"dependencies": {
 		"dayjs": "^1.11.18",
@@ -33,6 +34,7 @@
 		"@vitejs/plugin-vue": "^5.2.0",
 		"esbuild": "^0.27.2",
 		"husky": "^9.1.7",
+		"playwright": "^1.59.1",
 		"typescript": "~5.8.3",
 		"unplugin-vue-components": "^32.0.0",
 		"vite": "^8.0.8",
