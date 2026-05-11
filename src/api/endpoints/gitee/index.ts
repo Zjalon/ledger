@@ -16,7 +16,7 @@ import type { SyncEndpoint, SyncEndpointFactory } from "../type";
 import { createLoginAPI } from "./login";
 
 const config = {
-    repoPrefix: "cent-journal",
+    repoPrefix: "ledger-journal",
     entryName: "ledger",
     orderKeys: ["time"],
 };
@@ -55,7 +55,16 @@ export const GiteeEndpoint: SyncEndpointFactory = {
 
         const toBookName = (bookId: string) => {
             const [, r] = bookId.split("/");
-            return r.replace(`${config.repoPrefix}-`, "");
+            const prefix = `${config.repoPrefix}-`;
+            if (r.startsWith(prefix)) {
+                return r.slice(prefix.length);
+            }
+            /* 兼容旧仓库名 cent-journal- */
+            const legacy = "cent-journal-";
+            if (r.startsWith(legacy)) {
+                return r.slice(legacy.length);
+            }
+            return r;
         };
 
         const inviteForBook = async (bookId: string) => {

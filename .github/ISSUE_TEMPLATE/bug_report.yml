@@ -27,7 +27,7 @@ body:
       label: 💻 环境信息（必填）
       description: 请提供与你的运行环境相关的信息
       placeholder: |
-        Cent 版本/Commit ID: 例如 v1.2.0 或 git hash  
+        Ledger 版本/Commit ID: 例如 v1.2.0 或 git hash  
         操作系统: 例如 Windows 11, macOS Sequoia, iOS 17.2  
         运行平台: 例如 Chrome 浏览器, Safari PWA, Edge  
         设备类型: 例如 Desktop, iPhone 15, iPad Air
@@ -36,7 +36,7 @@ body:
     id: sync-config
     attributes:
       label: ☁️ 同步配置（非常重要）
-      description: Cent 极其依赖同步机制，请详细说明您的同步方式
+      description: Ledger 极其依赖同步机制，请详细说明您的同步方式
       placeholder: |
         同步方式: Github / WebDAV / Local Only  
         如果是 WebDAV: 服务商（坚果云、Nextcloud、群晖 NAS、Alist...） 

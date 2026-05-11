@@ -39,7 +39,7 @@ const onSubmit = async () => {
         <div class="login-inner">
             <header class="login-hero">
                 <p class="login-kicker">家庭记账</p>
-                <h1 class="login-brand">Cent</h1>
+                <h1 class="login-brand">Ledger</h1>
                 <p class="login-tagline">
                     一家人，一本账<br />每一笔都有迹可循
                 </p>
@@ -100,7 +100,7 @@ const onSubmit = async () => {
             </details>
 
             <p class="login-footnote">
-                Cent 不会上传你的令牌到我们的服务器；令牌仅在你的浏览器内用于访问
+                Ledger 不会上传你的令牌到我们的服务器；令牌仅在你的浏览器内用于访问
                 Gitee API。
             </p>
         </div>
@@ -109,13 +109,13 @@ const onSubmit = async () => {
 
 <style scoped>
 .login-page {
-    --login-bg: var(--cent-paper);
-    --login-paper: var(--cent-paper-card);
-    --login-ink: var(--cent-ink);
-    --login-muted: var(--cent-ink-subtle);
-    --login-accent: var(--cent-accent);
-    --login-accent-hover: var(--cent-accent-deep);
-    --login-ring: var(--cent-ring);
+    --login-bg: var(--ledger-paper);
+    --login-paper: var(--ledger-paper-card);
+    --login-ink: var(--ledger-ink);
+    --login-muted: var(--ledger-ink-subtle);
+    --login-accent: var(--ledger-accent);
+    --login-accent-hover: var(--ledger-accent-deep);
+    --login-ring: var(--ledger-ring);
 
     flex: 1;
     min-height: 0;
@@ -127,7 +127,7 @@ const onSubmit = async () => {
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     background: var(--login-bg);
-    font-family: var(--cent-font-ui);
+    font-family: var(--ledger-font-ui);
     color: var(--login-ink);
 }
 
@@ -218,7 +218,7 @@ const onSubmit = async () => {
 
 .login-brand {
     margin: 0 0 12px;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: clamp(2.75rem, 12vw, 3.5rem);
     font-weight: 400;
     line-height: 1.05;
@@ -274,7 +274,7 @@ const onSubmit = async () => {
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.65) inset,
         0 24px 48px -28px rgba(28, 25, 23, 0.18),
-        0 8px 16px -12px rgba(var(--cent-accent-rgb), 0.12);
+        0 8px 16px -12px rgba(var(--ledger-accent-rgb), 0.12);
     border: 1px solid rgba(231, 229, 228, 0.85);
     backdrop-filter: blur(10px);
     opacity: 0;
@@ -316,7 +316,7 @@ const onSubmit = async () => {
         var(--login-accent) 0%,
         var(--login-accent-hover) 100%
     );
-    box-shadow: 0 4px 14px -4px rgba(var(--cent-accent-rgb), 0.55);
+    box-shadow: 0 4px 14px -4px rgba(var(--ledger-accent-rgb), 0.55);
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease;
@@ -339,14 +339,14 @@ const onSubmit = async () => {
 }
 
 .login-field :deep(.van-field__control) {
-    font-family: var(--cent-font-ui), ui-monospace, monospace;
+    font-family: var(--ledger-font-ui), ui-monospace, monospace;
     font-size: 13px;
     line-height: 1.55;
     color: var(--login-ink);
 }
 
 .login-field :deep(.van-field__control::placeholder) {
-    color: var(--cent-ink-faint);
+    color: var(--ledger-ink-faint);
 }
 
 .login-field:focus-within :deep(.van-field__body) {
@@ -404,7 +404,7 @@ const onSubmit = async () => {
     margin: 24px 0 0;
     font-size: 11px;
     line-height: 1.65;
-    color: var(--cent-ink-faint);
+    color: var(--ledger-ink-faint);
     text-align: center;
     opacity: 0;
     animation: login-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.42s forwards;

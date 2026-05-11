@@ -3,7 +3,7 @@ import { onMounted, ref } from "vue";
 import type { SyncEndpoint } from "@/api/endpoints/type";
 import { useSync } from "@/composables/use-sync";
 
-const LAST_SYNC_KEY = "cent_last_sync_at";
+const LAST_SYNC_KEY = "ledger_last_sync_at";
 
 export const syncing = ref(false);
 export const pending = ref(false);

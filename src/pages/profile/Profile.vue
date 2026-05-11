@@ -128,8 +128,8 @@ const onLogout = async () => {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    font-family: var(--cent-font-ui);
-    color: var(--cent-ink);
+    font-family: var(--ledger-font-ui);
+    color: var(--ledger-ink);
     background: transparent;
 }
 .content {
@@ -143,12 +143,12 @@ const onLogout = async () => {
     gap: 16px;
     padding: 22px 18px;
     margin: 0 16px 14px;
-    background: var(--cent-paper-elevated);
+    background: var(--ledger-paper-elevated);
     border-radius: 18px;
-    border: 1px solid rgba(var(--cent-accent-rgb), 0.08);
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.08);
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.82) inset,
-        0 14px 36px -26px var(--cent-shadow-ink);
+        0 14px 36px -26px var(--ledger-shadow-ink);
 }
 .user-info {
     display: flex;
@@ -157,18 +157,18 @@ const onLogout = async () => {
     min-width: 0;
 }
 .user-nickname {
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: 1.35rem;
     font-weight: 400;
     letter-spacing: -0.02em;
     line-height: 1.2;
-    color: var(--cent-ink);
+    color: var(--ledger-ink);
 }
 .logout-actions {
     margin: 32px 16px 0;
 }
 .logout-actions :deep(.van-button--danger.van-button--plain) {
-    color: var(--cent-warm);
-    border-color: rgba(var(--cent-warm-rgb), 0.35);
+    color: var(--ledger-warm);
+    border-color: rgba(var(--ledger-warm-rgb), 0.35);
 }
 </style>

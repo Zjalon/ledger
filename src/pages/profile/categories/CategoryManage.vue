@@ -194,15 +194,15 @@ async function confirmAdd() {
     min-height: 0;
     overflow-y: auto;
     padding-bottom: 24px;
-    font-family: var(--cent-font-ui);
-    color: var(--cent-ink);
-    background: var(--cent-paper);
+    font-family: var(--ledger-font-ui);
+    color: var(--ledger-ink);
+    background: var(--ledger-paper);
 }
 .cat-hint {
     margin: 12px 16px;
     font-size: 12px;
     line-height: 1.5;
-    color: var(--cent-ink-muted);
+    color: var(--ledger-ink-muted);
 }
 .cat-tag {
     font-size: 11px;
@@ -210,8 +210,8 @@ async function confirmAdd() {
     border-radius: 999px;
 }
 .cat-tag--preset {
-    background: rgba(var(--cent-accent-rgb), 0.1);
-    color: var(--cent-accent);
+    background: rgba(var(--ledger-accent-rgb), 0.1);
+    color: var(--ledger-accent);
 }
 .cat-add {
     margin: 20px 16px 0;

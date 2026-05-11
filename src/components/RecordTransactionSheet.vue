@@ -395,27 +395,27 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
     height: 100%;
     min-height: 0;
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    font-family: var(--cent-font-ui);
+    font-family: var(--ledger-font-ui);
 }
 .sheet__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 12px 14px 8px;
-    border-bottom: 1px solid rgba(var(--cent-accent-rgb), 0.08);
+    border-bottom: 1px solid rgba(var(--ledger-accent-rgb), 0.08);
 }
 .sheet__cancel {
     border: none;
     background: none;
     font-size: 15px;
-    color: var(--cent-ink-muted);
+    color: var(--ledger-ink-muted);
     padding: 4px 8px;
     cursor: pointer;
 }
 .sheet__title {
     font-weight: 700;
     font-size: 16px;
-    color: var(--cent-ink);
+    color: var(--ledger-ink);
 }
 .sheet__placeholder {
     width: 48px;
@@ -438,6 +438,6 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
     padding: 14px 16px 8px;
     font-weight: 600;
     font-size: 14px;
-    color: var(--cent-ink-muted);
+    color: var(--ledger-ink-muted);
 }
 </style>

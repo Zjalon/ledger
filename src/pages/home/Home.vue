@@ -225,13 +225,13 @@ onUnmounted(() => {
 
 <style scoped>
 .journal-page {
-    --journal-bg: var(--cent-paper);
-    --journal-ink: var(--cent-ink);
-    --journal-muted: var(--cent-ink-muted);
-    --journal-accent: var(--cent-accent);
-    --journal-expense: var(--cent-warm);
-    --journal-income: var(--cent-income);
-    --journal-paper: var(--cent-paper-elevated);
+    --journal-bg: var(--ledger-paper);
+    --journal-ink: var(--ledger-ink);
+    --journal-muted: var(--ledger-ink-muted);
+    --journal-accent: var(--ledger-accent);
+    --journal-expense: var(--ledger-warm);
+    --journal-income: var(--ledger-income);
+    --journal-paper: var(--ledger-paper-elevated);
 
     flex: 1;
     min-height: 0;
@@ -241,7 +241,7 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     background: var(--journal-bg);
-    font-family: var(--cent-font-ui);
+    font-family: var(--ledger-font-ui);
     color: var(--journal-ink);
 }
 
@@ -266,7 +266,7 @@ onUnmounted(() => {
     left: -26%;
     background: radial-gradient(
         circle,
-        rgba(var(--cent-warm-rgb), 0.14) 0%,
+        rgba(var(--ledger-warm-rgb), 0.14) 0%,
         transparent 72%
     );
     animation: journal-float 19s ease-in-out infinite;
@@ -279,7 +279,7 @@ onUnmounted(() => {
     right: -24%;
     background: radial-gradient(
         circle,
-        rgba(var(--cent-accent-rgb), 0.28) 0%,
+        rgba(var(--ledger-accent-rgb), 0.28) 0%,
         transparent 70%
     );
     animation: journal-float 21s ease-in-out infinite reverse;
@@ -309,8 +309,8 @@ onUnmounted(() => {
     min-height: 0;
     overflow-y: auto;
     padding: 14px 16px;
-    /* 为中部「记一笔」按钮留出滚动空间；底部安全区由 MainLayout 底栏承担 */
-    padding-bottom: 76px;
+    /* 底栏已 fixed 占位；此处主要为中部「记一笔」球上半部分留出滚动空间 */
+    padding-bottom: 48px;
     max-width: 480px;
     margin: 0 auto;
     width: 100%;
@@ -324,7 +324,7 @@ onUnmounted(() => {
     background: var(--journal-paper);
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.88) inset,
-        0 18px 42px -30px var(--cent-shadow-ink);
+        0 18px 42px -30px var(--ledger-shadow-ink);
     overflow: hidden;
     opacity: 0;
     animation: journal-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -339,7 +339,7 @@ onUnmounted(() => {
     background: linear-gradient(
         180deg,
         var(--journal-accent) 0%,
-        rgba(var(--cent-warm-rgb), 0.35) 100%
+        rgba(var(--ledger-warm-rgb), 0.35) 100%
     );
     border-radius: 20px 0 0 20px;
 }
@@ -378,7 +378,7 @@ onUnmounted(() => {
 }
 
 .journal-stat__value {
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: clamp(1.55rem, 7vw, 2rem);
     font-weight: 400;
     line-height: 1.08;
@@ -434,7 +434,7 @@ onUnmounted(() => {
 
 .journal-empty__title {
     margin: 0 0 8px;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: 1.28rem;
     font-weight: 400;
 }

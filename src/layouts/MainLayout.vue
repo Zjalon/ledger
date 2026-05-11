@@ -57,7 +57,7 @@ const onSyncClick = async () => {
     <div class="layout-container">
         <header v-show="entryReady && !hideShellHeader" class="header">
             <div class="header-brand">
-                <span class="header-title">Cent</span>
+                <span class="header-title">Ledger</span>
                 <span class="header-lede">家庭账本</span>
             </div>
             <button
@@ -70,7 +70,7 @@ const onSyncClick = async () => {
                     v-if="syncing"
                     type="spinner"
                     size="18"
-                    color="var(--cent-accent)"
+                    color="var(--ledger-accent)"
                 />
                 <van-icon
                     v-else-if="pending"
@@ -138,16 +138,17 @@ const onSyncClick = async () => {
 <style scoped>
 .layout-container {
     width: 100%;
-    height: 100%;
+    flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background: var(--cent-paper);
+    background: var(--ledger-paper);
+    overflow-x: hidden;
 }
 .header {
-    --header-ink: var(--cent-ink);
-    --header-muted: var(--cent-ink-subtle);
-    --header-accent: var(--cent-accent);
+    --header-ink: var(--ledger-ink);
+    --header-muted: var(--ledger-ink-subtle);
+    --header-accent: var(--ledger-accent);
     --header-paper: rgba(255, 254, 251, 0.88);
 
     display: flex;
@@ -162,7 +163,7 @@ const onSyncClick = async () => {
         var(--header-paper) 0%,
         rgba(250, 246, 240, 0.96) 100%
     );
-    border-bottom: 1px solid rgba(var(--cent-accent-rgb), 0.09);
+    border-bottom: 1px solid rgba(var(--ledger-accent-rgb), 0.09);
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.65) inset,
         0 10px 28px -18px rgba(28, 25, 23, 0.07);
@@ -186,7 +187,7 @@ const onSyncClick = async () => {
 }
 
 .header-lede {
-    font-family: var(--cent-font-ui);
+    font-family: var(--ledger-font-ui);
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.22em;
@@ -203,10 +204,10 @@ const onSyncClick = async () => {
     width: 44px;
     height: 44px;
     padding: 0;
-    border: 1px solid rgba(var(--cent-accent-rgb), 0.14);
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.14);
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.55);
-    box-shadow: 0 2px 10px rgba(var(--cent-accent-rgb), 0.06);
+    box-shadow: 0 2px 10px rgba(var(--ledger-accent-rgb), 0.06);
     cursor: pointer;
     transition:
         background 0.2s ease,
@@ -224,7 +225,7 @@ const onSyncClick = async () => {
 }
 
 .header-sync__icon--pending {
-    color: var(--cent-warm);
+    color: var(--ledger-warm);
 }
 
 .header-sync__icon--idle {
@@ -237,6 +238,8 @@ const onSyncClick = async () => {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* fixed 底栏脱离文档流，为内容预留与 tabbar+安全区一致的高度 */
+    padding-bottom: var(--ledger-pwa-tabbar-h);
 }
 .main-entry-loading {
     flex: 1;
@@ -245,17 +248,24 @@ const onSyncClick = async () => {
     justify-content: center;
     min-height: 0;
     padding: 24px;
-    background: var(--cent-paper);
+    background: var(--ledger-paper);
 }
 
 .app-tabbar {
-    position: relative;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
     flex-shrink: 0;
-    z-index: 10;
-    --tabbar-accent: var(--cent-accent);
-    --tabbar-ink: var(--cent-ink-muted);
+    --tabbar-accent: var(--ledger-accent);
+    --tabbar-ink: var(--ledger-ink-muted);
     --tabbar-paper: rgba(255, 254, 251, 0.97);
     --tabbar-row-h: 52px;
+    /* 底栏背景延伸到屏幕左右沿（安全区外仍用同底色，避免缝） */
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+    box-sizing: border-box;
 }
 
 .app-tabbar__surface {
@@ -267,7 +277,7 @@ const onSyncClick = async () => {
     /* 仅此处预留底部安全区，避免与 #app 重复 */
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
     background: var(--tabbar-paper);
-    border-top: 1px solid rgba(var(--cent-accent-rgb), 0.1);
+    border-top: 1px solid rgba(var(--ledger-accent-rgb), 0.1);
     box-shadow:
         0 -10px 32px rgba(28, 25, 23, 0.05),
         0 -1px 0 rgba(255, 255, 255, 0.92) inset;
@@ -290,7 +300,7 @@ const onSyncClick = async () => {
     padding: 0 4px;
     border: none;
     background: transparent;
-    font-family: var(--cent-font-ui);
+    font-family: var(--ledger-font-ui);
     color: var(--tabbar-ink);
     opacity: 0.72;
     cursor: pointer;
@@ -340,10 +350,10 @@ const onSyncClick = async () => {
     background: linear-gradient(
         165deg,
         var(--tabbar-accent) 0%,
-        var(--cent-accent-deep) 100%
+        var(--ledger-accent-deep) 100%
     );
     box-shadow:
-        0 8px 22px rgba(var(--cent-accent-rgb), 0.38),
+        0 8px 22px rgba(var(--ledger-accent-rgb), 0.38),
         0 1px 0 rgba(255, 255, 255, 0.22) inset;
     transform: translateY(-50%);
     transition: transform 0.18s ease;

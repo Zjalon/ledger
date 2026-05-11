@@ -1,4 +1,4 @@
-# Cent（oncent-next）
+# Ledger（ledger-web）
 
 基于 **Vue 3 + Vite** 的协作记账 **PWA**：纯前端应用，账本数据以 JSON 存放在用户的 **Gitee** 私有仓库中，通过增量同步与协作者共享。
 

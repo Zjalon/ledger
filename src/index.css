@@ -6,77 +6,117 @@
 
 :root {
 	/* Typography — 与 index.html 中的 Google Fonts 对应 */
-	--cent-font-display: "Instrument Serif", Georgia, "Songti SC", serif;
-	--cent-font-ui: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+	--ledger-font-display: "Instrument Serif", Georgia, "Songti SC", serif;
+	--ledger-font-ui: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 
 	/* Core palette：暖纸底 + 森林accent + 收支语义色 */
-	--cent-paper: #faf6f0;
-	--cent-paper-deep: #f3ebe0;
-	--cent-paper-elevated: rgba(255, 254, 251, 0.94);
-	--cent-paper-card: rgba(255, 254, 251, 0.92);
+	--ledger-paper: #faf6f0;
+	--ledger-paper-deep: #f3ebe0;
+	--ledger-paper-elevated: rgba(255, 254, 251, 0.94);
+	--ledger-paper-card: rgba(255, 254, 251, 0.92);
 
-	--cent-ink: #1c1917;
-	--cent-ink-muted: #57534e;
-	--cent-ink-subtle: #78716c;
-	--cent-ink-faint: #a8a29e;
+	--ledger-ink: #1c1917;
+	--ledger-ink-muted: #57534e;
+	--ledger-ink-subtle: #78716c;
+	--ledger-ink-faint: #a8a29e;
 
-	--cent-accent: #2d6a4f;
-	--cent-accent-deep: #1b4332;
-	--cent-accent-rgb: 45, 106, 79;
-	--cent-accent-soft: rgba(45, 106, 79, 0.12);
-	--cent-ring: rgba(45, 106, 79, 0.22);
+	--ledger-accent: #2d6a4f;
+	--ledger-accent-deep: #1b4332;
+	--ledger-accent-rgb: 45, 106, 79;
+	--ledger-accent-soft: rgba(45, 106, 79, 0.12);
+	--ledger-ring: rgba(45, 106, 79, 0.22);
 
-	--cent-warm: #9a3412;
-	--cent-warm-rgb: 154, 52, 18;
-	--cent-income: #166534;
+	--ledger-warm: #9a3412;
+	--ledger-warm-rgb: 154, 52, 18;
+	--ledger-income: #166534;
 
-	--cent-shadow-ink: rgba(28, 25, 23, 0.38);
-	--cent-overlay: rgba(28, 25, 23, 0.42);
+	--ledger-shadow-ink: rgba(28, 25, 23, 0.38);
+	--ledger-overlay: rgba(28, 25, 23, 0.42);
 
 	--van-tabbar-item-icon-size: 22px;
+
+	/*
+	 * 主壳底栏占位（与 MainLayout 中 tab 行 + 上下 8px padding + Home Indicator 一致）
+	 * 用于 fixed tabbar 时给 .main 留底，避免内容被遮挡
+	 */
+	--ledger-pwa-tabbar-h: calc(68px + env(safe-area-inset-bottom, 0px));
 }
 
 html {
 	color-scheme: light;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	height: 100%;
+}
+
+@supports (height: -webkit-fill-available) {
+	html {
+		height: -webkit-fill-available;
+	}
 }
 
 html,
 body {
 	width: 100%;
-	height: 100%;
 	margin: 0;
 	-webkit-tap-highlight-color: transparent;
 	-webkit-touch-callout: none;
 }
 
 body {
-	background-color: var(--cent-paper);
+	min-height: 100vh;
+	background-color: var(--ledger-paper);
 	background-image:
 		radial-gradient(
 			ellipse 130% 90% at 0% -18%,
-			rgba(var(--cent-warm-rgb), 0.07) 0%,
+			rgba(var(--ledger-warm-rgb), 0.07) 0%,
 			transparent 52%
 		),
 		radial-gradient(
 			ellipse 100% 75% at 100% 0%,
-			rgba(var(--cent-accent-rgb), 0.1) 0%,
+			rgba(var(--ledger-accent-rgb), 0.1) 0%,
 			transparent 50%
 		),
-		linear-gradient(180deg, var(--cent-paper) 0%, var(--cent-paper-deep) 100%);
-	font-family: var(--cent-font-ui);
-	color: var(--cent-ink);
+		linear-gradient(
+			180deg,
+			var(--ledger-paper) 0%,
+			var(--ledger-paper-deep) 100%
+		);
+	font-family: var(--ledger-font-ui);
+	color: var(--ledger-ink);
+}
+
+@supports (min-height: 100dvh) {
+	body {
+		min-height: 100dvh;
+	}
+}
+
+@supports (-webkit-touch-callout: none) {
+	body {
+		min-height: -webkit-fill-available;
+	}
 }
 
 #app {
 	width: 100%;
-	height: 100%;
+	min-height: 100vh;
 	display: flex;
 	flex-direction: column;
-	min-height: 0;
-	/* 仅左右安全区；底部由 MainLayout 底栏统一处理，避免与 tabbar 重复叠加 */
+	/* 仅左右安全区；底栏 fixed 后底部安全区在 tabbar 内处理 */
 	padding: 0 env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
+}
+
+@supports (min-height: 100dvh) {
+	#app {
+		min-height: 100dvh;
+	}
+}
+
+@supports (-webkit-touch-callout: none) {
+	#app {
+		min-height: -webkit-fill-available;
+	}
 }
 
 /* 路由根节点填满高度，避免 height:100% 在 flex 父级下失效 */

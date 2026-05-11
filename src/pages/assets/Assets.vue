@@ -534,11 +534,11 @@ onUnmounted(() => {
 
 <style scoped>
 .assets-page {
-    --assets-bg: var(--cent-paper);
-    --assets-ink: var(--cent-ink);
-    --assets-muted: var(--cent-ink-muted);
-    --assets-accent: var(--cent-accent);
-    --assets-paper: var(--cent-paper-elevated);
+    --assets-bg: var(--ledger-paper);
+    --assets-ink: var(--ledger-ink);
+    --assets-muted: var(--ledger-ink-muted);
+    --assets-accent: var(--ledger-accent);
+    --assets-paper: var(--ledger-paper-elevated);
 
     flex: 1;
     min-height: 0;
@@ -548,7 +548,7 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     background: var(--assets-bg);
-    font-family: var(--cent-font-ui);
+    font-family: var(--ledger-font-ui);
     color: var(--assets-ink);
 }
 
@@ -573,7 +573,7 @@ onUnmounted(() => {
     right: -28%;
     background: radial-gradient(
         circle,
-        rgba(var(--cent-accent-rgb), 0.35) 0%,
+        rgba(var(--ledger-accent-rgb), 0.35) 0%,
         transparent 70%
     );
     animation: assets-float 18s ease-in-out infinite;
@@ -616,7 +616,7 @@ onUnmounted(() => {
     min-height: 0;
     overflow-y: auto;
     padding: 16px 18px;
-    padding-bottom: 72px;
+    padding-bottom: 48px;
     max-width: 480px;
     margin: 0 auto;
     width: 100%;
@@ -645,7 +645,7 @@ onUnmounted(() => {
     background: linear-gradient(
         180deg,
         var(--assets-accent) 0%,
-        rgba(var(--cent-accent-rgb), 0.35) 100%
+        rgba(var(--ledger-accent-rgb), 0.35) 100%
     );
     border-radius: 20px 0 0 20px;
 }
@@ -674,7 +674,7 @@ onUnmounted(() => {
 
 .assets-total-value {
     margin: 0;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: clamp(2rem, 9vw, 2.65rem);
     font-weight: 400;
     line-height: 1.05;
@@ -717,9 +717,9 @@ onUnmounted(() => {
     background: linear-gradient(
         165deg,
         var(--assets-accent) 0%,
-        var(--cent-accent-deep) 100%
+        var(--ledger-accent-deep) 100%
     );
-    box-shadow: 0 3px 12px -4px rgba(var(--cent-accent-rgb), 0.45);
+    box-shadow: 0 3px 12px -4px rgba(var(--ledger-accent-rgb), 0.45);
 }
 
 .assets-add-inline:active {
@@ -769,7 +769,7 @@ onUnmounted(() => {
     background: linear-gradient(
         165deg,
         var(--assets-accent) 0%,
-        var(--cent-accent-deep) 100%
+        var(--ledger-accent-deep) 100%
     ) !important;
     border: none !important;
 }
@@ -788,7 +788,7 @@ onUnmounted(() => {
     font: inherit;
     color: inherit;
     background: var(--assets-paper);
-    border: 1px solid rgba(var(--cent-accent-rgb), 0.08);
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.08);
     box-shadow: 0 10px 28px -22px rgba(28, 25, 23, 0.45);
 }
 
@@ -867,7 +867,7 @@ onUnmounted(() => {
 .assets-empty__glyph {
     display: block;
     margin-bottom: 12px;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: 28px;
     color: var(--assets-accent);
     opacity: 0.55;
@@ -875,7 +875,7 @@ onUnmounted(() => {
 
 .assets-empty__title {
     margin: 0 0 8px;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: 1.35rem;
     font-weight: 400;
 }
@@ -901,9 +901,9 @@ onUnmounted(() => {
     background: linear-gradient(
         165deg,
         var(--assets-accent) 0%,
-        var(--cent-accent-deep) 100%
+        var(--ledger-accent-deep) 100%
     );
-    box-shadow: 0 4px 14px -4px rgba(var(--cent-accent-rgb), 0.45);
+    box-shadow: 0 4px 14px -4px rgba(var(--ledger-accent-rgb), 0.45);
 }
 
 .balance-sheet {
@@ -912,7 +912,7 @@ onUnmounted(() => {
 
 .balance-sheet__title {
     margin: 6px 0 8px;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: 1.4rem;
     font-weight: 400;
     text-align: center;
@@ -945,7 +945,7 @@ onUnmounted(() => {
 
 .form-sheet__title {
     margin: 8px 0 18px;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: 1.45rem;
     font-weight: 400;
     text-align: center;
@@ -1014,7 +1014,7 @@ onUnmounted(() => {
     gap: 6px;
     padding: 10px 8px;
     border-radius: 12px;
-    border: 1px solid rgba(var(--cent-accent-rgb), 0.18);
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.18);
     background: rgba(255, 254, 251, 0.95);
     cursor: pointer;
     font-family: inherit;
@@ -1038,7 +1038,7 @@ onUnmounted(() => {
 
 .form-type-chip--active {
     border-color: var(--assets-accent);
-    background: rgba(var(--cent-accent-rgb), 0.12);
+    background: rgba(var(--ledger-accent-rgb), 0.12);
 }
 
 .form-type-chip--active .form-type-chip__ico {

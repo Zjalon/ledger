@@ -20,9 +20,9 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    background: var(--cent-paper);
-    font-family: var(--cent-font-ui);
-    color: var(--cent-ink);
+    background: var(--ledger-paper);
+    font-family: var(--ledger-font-ui);
+    color: var(--ledger-ink);
 }
 
 .stat-atmosphere {
@@ -46,7 +46,7 @@
     left: -20%;
     background: radial-gradient(
         circle,
-        rgba(var(--cent-accent-rgb), 0.22) 0%,
+        rgba(var(--ledger-accent-rgb), 0.22) 0%,
         transparent 72%
     );
 }
@@ -58,7 +58,7 @@
     right: -18%;
     background: radial-gradient(
         circle,
-        rgba(var(--cent-warm-rgb), 0.08) 0%,
+        rgba(var(--ledger-warm-rgb), 0.08) 0%,
         transparent 70%
     );
 }
@@ -83,7 +83,7 @@
 }
 
 .stat-inner :deep(.van-empty__description) {
-    color: var(--cent-ink-muted);
+    color: var(--ledger-ink-muted);
     font-weight: 500;
     letter-spacing: 0.02em;
 }

@@ -17,7 +17,10 @@ export function normalizeMetaSnapshot(raw: unknown): Record<string, unknown> {
     return o;
 }
 
-/** 新版 profile 含 centUsers / centAccounts；旧仓库可能只有用户资料等杂项 */
+const LEGACY_PROFILE_USERS_KEY = "centUsers";
+const LEGACY_PROFILE_ACCOUNTS_KEY = "centAccounts";
+
+/** 新版 profile 含 ledgerUsers / ledgerAccounts；兼容旧键 centUsers / centAccounts */
 export function normalizeProfileSnapshot(
     raw: unknown,
 ): Record<string, unknown> {
@@ -25,6 +28,31 @@ export function normalizeProfileSnapshot(
         raw && typeof raw === "object" && !Array.isArray(raw)
             ? { ...(raw as Record<string, unknown>) }
             : {};
+
+    const legacyUsers = o[LEGACY_PROFILE_USERS_KEY];
+    if (
+        legacyUsers &&
+        typeof legacyUsers === "object" &&
+        !Array.isArray(legacyUsers)
+    ) {
+        const next = o[PROFILE_USERS_KEY];
+        if (!next || typeof next !== "object" || Array.isArray(next)) {
+            o[PROFILE_USERS_KEY] = {
+                ...(legacyUsers as Record<string, unknown>),
+            };
+        }
+        delete o[LEGACY_PROFILE_USERS_KEY];
+    }
+
+    const legacyAccounts = o[LEGACY_PROFILE_ACCOUNTS_KEY];
+    if (Array.isArray(legacyAccounts)) {
+        const next = o[PROFILE_ACCOUNTS_KEY];
+        if (!Array.isArray(next) || next.length === 0) {
+            o[PROFILE_ACCOUNTS_KEY] = [...legacyAccounts];
+        }
+        delete o[LEGACY_PROFILE_ACCOUNTS_KEY];
+    }
+
     const users = o[PROFILE_USERS_KEY];
     if (!users || typeof users !== "object" || Array.isArray(users)) {
         o[PROFILE_USERS_KEY] = {};

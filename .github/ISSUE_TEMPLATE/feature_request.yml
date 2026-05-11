@@ -1,5 +1,5 @@
 name: "💡 Feature Request"
-description: "提出一个关于 Cent 的新功能或改进建议"
+description: "提出一个关于 Ledger 的新功能或改进建议"
 title: "[Feat] "
 labels:
   - enhancement
@@ -10,8 +10,8 @@ body:
     attributes:
       value: |
         <!--
-        在提交功能请求前，请先阅读 Cent 的核心理念：
-        Cent 旨在成为完全不受后端服务器束缚的自由记账软件。
+        在提交功能请求前，请先阅读 Ledger 的核心理念：
+        Ledger 旨在成为完全不受后端服务器束缚的自由记账软件。
         -->
 
   - type: textarea
@@ -35,7 +35,7 @@ body:
     id: core-philosophy
     attributes:
       label: "🏗 核心理念自检（必填）"
-      description: "Cent 坚持 Serverless First 原则，请回答以下问题"
+      description: "Ledger 坚持 Serverless First 原则，请回答以下问题"
       options:
         - label: "是否可以在无服务器后端的情况下运行？（即：该功能不依赖特定 API 服务器）"
           required: true

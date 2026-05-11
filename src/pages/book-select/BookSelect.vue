@@ -137,7 +137,7 @@ onMounted(async () => {
                     </div>
                     <p class="pick-empty__title">还没有账本</p>
                     <p class="pick-empty__text">
-                        点右上角「新建账本」，Cent 会在你的 Gitee
+                        点右上角「新建账本」，Ledger 会在你的 Gitee
                         下创建一个仓库，家人加入仓库后即可一起记账。
                     </p>
                     <van-button
@@ -171,7 +171,7 @@ onMounted(async () => {
                     <p class="pick-dialog-title__kicker">家庭账本</p>
                     <h2 class="pick-dialog-title__main">新建账本</h2>
                     <p class="pick-dialog-title__lede">
-                        为家人立一本新账，Cent 会在 Gitee 为你生成仓库
+                        为家人立一本新账，Ledger 会在 Gitee 为你生成仓库
                     </p>
                 </div>
             </template>
@@ -193,12 +193,12 @@ onMounted(async () => {
 
 <style scoped>
 .pick-page {
-    --pick-bg: var(--cent-paper);
-    --pick-ink: var(--cent-ink);
-    --pick-muted: var(--cent-ink-subtle);
-    --pick-accent: var(--cent-accent);
-    --pick-accent-soft: var(--cent-accent-soft);
-    --pick-paper: var(--cent-paper-elevated);
+    --pick-bg: var(--ledger-paper);
+    --pick-ink: var(--ledger-ink);
+    --pick-muted: var(--ledger-ink-subtle);
+    --pick-accent: var(--ledger-accent);
+    --pick-accent-soft: var(--ledger-accent-soft);
+    --pick-paper: var(--ledger-paper-elevated);
 
     flex: 1;
     min-height: 0;
@@ -210,7 +210,7 @@ onMounted(async () => {
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     background: var(--pick-bg);
-    font-family: var(--cent-font-ui);
+    font-family: var(--ledger-font-ui);
     color: var(--pick-ink);
 }
 
@@ -300,7 +300,7 @@ onMounted(async () => {
 
 .pick-title {
     margin: 0 0 10px;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: clamp(1.85rem, 8vw, 2.35rem);
     font-weight: 400;
     line-height: 1.12;
@@ -442,7 +442,7 @@ onMounted(async () => {
     justify-content: center;
     width: 44px;
     flex-shrink: 0;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: 17px;
     color: var(--pick-accent);
     background: var(--pick-accent-soft);
@@ -518,7 +518,7 @@ onMounted(async () => {
 
 .pick-empty__title {
     margin: 0 0 8px;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: 1.35rem;
     font-weight: 400;
     color: var(--pick-ink);
@@ -657,7 +657,7 @@ onMounted(async () => {
     width: min(100vw - 40px, 380px);
     max-width: 380px;
     overflow: hidden;
-    font-family: var(--cent-font-ui);
+    font-family: var(--ledger-font-ui);
     background: linear-gradient(
         165deg,
         rgba(255, 254, 251, 0.98) 0%,
@@ -668,7 +668,7 @@ onMounted(async () => {
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.75) inset,
         0 28px 56px -28px rgba(28, 25, 23, 0.35),
-        0 12px 28px -18px rgba(var(--cent-accent-rgb), 0.15);
+        0 12px 28px -18px rgba(var(--ledger-accent-rgb), 0.15);
 }
 
 .pick-dialog.van-dialog::before {
@@ -679,8 +679,8 @@ onMounted(async () => {
     background: linear-gradient(
         90deg,
         #40916c 0%,
-        var(--cent-accent) 45%,
-        var(--cent-accent-deep) 100%
+        var(--ledger-accent) 45%,
+        var(--ledger-accent-deep) 100%
     );
 }
 
@@ -695,17 +695,17 @@ onMounted(async () => {
     font-weight: 600;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: var(--cent-accent);
+    color: var(--ledger-accent);
 }
 
 .pick-dialog-title__main {
     margin: 0 0 8px;
-    font-family: var(--cent-font-display);
+    font-family: var(--ledger-font-display);
     font-size: 1.65rem;
     font-weight: 400;
     line-height: 1.15;
     letter-spacing: -0.02em;
-    color: var(--cent-ink);
+    color: var(--ledger-ink);
 }
 
 .pick-dialog-title__lede {
@@ -713,7 +713,7 @@ onMounted(async () => {
     font-size: 13px;
     font-weight: 500;
     line-height: 1.5;
-    color: var(--cent-ink-subtle);
+    color: var(--ledger-ink-subtle);
 }
 
 .pick-dialog .van-dialog__content {
@@ -742,7 +742,7 @@ onMounted(async () => {
     font-size: 14px !important;
     background: rgba(255, 255, 255, 0.85) !important;
     border: 1px solid #d6d3d1 !important;
-    color: var(--cent-ink-muted) !important;
+    color: var(--ledger-ink-muted) !important;
 }
 
 .pick-dialog .van-dialog__confirm {
@@ -757,10 +757,10 @@ onMounted(async () => {
     color: #fff !important;
     background: linear-gradient(
         165deg,
-        var(--cent-accent) 0%,
-        var(--cent-accent-deep) 100%
+        var(--ledger-accent) 0%,
+        var(--ledger-accent-deep) 100%
     ) !important;
-    box-shadow: 0 4px 14px -4px rgba(var(--cent-accent-rgb), 0.45);
+    box-shadow: 0 4px 14px -4px rgba(var(--ledger-accent-rgb), 0.45);
 }
 
 .pick-dialog .van-dialog__confirm:active {
