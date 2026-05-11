@@ -181,7 +181,7 @@ export const GiteeEndpoint: SyncEndpointFactory = {
                     const balanceDeltas =
                         accountBalanceDeltasFromTransactionActions(
                             txActions,
-                            existingById,
+                            (id) => existingById.get(id),
                         );
 
                     await repo.batch(

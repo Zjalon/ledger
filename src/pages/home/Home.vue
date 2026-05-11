@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import dayjs from "dayjs";
-import { showToast } from "vant";
+import {
+    closeToast,
+    showConfirmDialog,
+    showLoadingToast,
+    showToast,
+} from "vant";
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { LoginAPI } from "@/api/endpoints/gitee";
 import { buildCategoryLabelMap } from "@/composables/use-ledger-meta";
 import { useSync } from "@/composables/use-sync";
 import type { Full } from "@/database/stash";
@@ -37,25 +43,69 @@ const todayRows = computed(() => {
         .sort((a, b) => b.time - a.time);
 });
 
-const todayExpenseRaw = computed(() =>
-    todayRows.value
-        .filter((b) => b.type === "expense")
-        .reduce((s, b) => s + b.amount, 0),
-);
+/** 顶部 hero：今日每位成员的收支合计（仅 income/expense，不含转账） */
+type TodayHeroRow = {
+    creatorKey: string;
+    label: string;
+    isSelf: boolean;
+    expenseLabel: string;
+    incomeLabel: string;
+};
 
-const todayIncomeRaw = computed(() =>
-    todayRows.value
-        .filter((b) => b.type === "income")
-        .reduce((s, b) => s + b.amount, 0),
-);
+function creatorLabelFromKey(creatorKey: string): string {
+    const u = usersList.value.find((x) => String(x.id) === creatorKey);
+    const nick = u?.nickname?.trim();
+    if (nick) {
+        return nick;
+    }
+    if (creatorKey.length > 10) {
+        return `成员 …${creatorKey.slice(-4)}`;
+    }
+    return "家庭成员";
+}
 
-const todayExpenseLabel = computed(() =>
-    fmt.format(amountToNumber(todayExpenseRaw.value)),
-);
+const todayPerCreatorHero = computed((): TodayHeroRow[] => {
+    const start = dayjs().startOf("day").valueOf();
+    const end = dayjs().add(1, "day").startOf("day").valueOf();
+    const uid = LoginAPI.getLocalToken()?.accessToken?.trim() ?? "";
 
-const todayIncomeLabel = computed(() =>
-    fmt.format(amountToNumber(todayIncomeRaw.value)),
-);
+    const map = new Map<string, { expense: number; income: number }>();
+    for (const b of bills.value) {
+        if (b.time < start || b.time >= end) {
+            continue;
+        }
+        if (b.type !== "expense" && b.type !== "income") {
+            continue;
+        }
+        const k = String(b.creatorId);
+        const cur = map.get(k) ?? { expense: 0, income: 0 };
+        if (b.type === "expense") {
+            cur.expense += b.amount;
+        } else {
+            cur.income += b.amount;
+        }
+        map.set(k, cur);
+    }
+
+    const rows: TodayHeroRow[] = [...map.entries()].map(
+        ([creatorKey, sums]) => ({
+            creatorKey,
+            label: creatorLabelFromKey(creatorKey),
+            isSelf: uid !== "" && creatorKey === uid,
+            expenseLabel: fmt.format(amountToNumber(sums.expense)),
+            incomeLabel: fmt.format(amountToNumber(sums.income)),
+        }),
+    );
+
+    rows.sort((a, b) => {
+        if (a.isSelf !== b.isSelf) {
+            return a.isSelf ? -1 : 1;
+        }
+        return a.label.localeCompare(b.label, "zh-CN");
+    });
+
+    return rows;
+});
 
 function purposeLine(tx: Full<Transaction>): string {
     const cat = categoryLabelMap.value.get(tx.categoryId) ?? tx.categoryId;
@@ -70,15 +120,7 @@ function purposeLine(tx: Full<Transaction>): string {
 }
 
 function creatorLabel(tx: Full<Transaction>): string {
-    const u = usersList.value.find(
-        (x) => String(x.id) === String(tx.creatorId),
-    );
-    const nick = u?.nickname?.trim();
-    if (nick) {
-        return nick;
-    }
-    const id = String(tx.creatorId);
-    return id.length > 10 ? `成员 …${id.slice(-4)}` : "家庭成员";
+    return creatorLabelFromKey(String(tx.creatorId));
 }
 
 function timeLabel(ts: number): string {
@@ -104,6 +146,46 @@ function rowModifier(tx: Full<Transaction>): string {
         return "is-income";
     }
     return "is-transfer";
+}
+
+function flowKindLabel(tx: Full<Transaction>): string {
+    if (tx.type === "expense") {
+        return "支出";
+    }
+    if (tx.type === "income") {
+        return "收入";
+    }
+    return "转账";
+}
+
+async function confirmDeleteTransaction(tx: Full<Transaction>) {
+    const bookId = selectedBookId.value?.trim();
+    if (!bookId) {
+        showToast("未选择账本");
+        return;
+    }
+    try {
+        await showConfirmDialog({
+            title: "删除流水",
+            message: `确定删除这笔${flowKindLabel(tx)}吗？删除后相关账户余额将恢复为删除前的状态。`,
+            confirmButtonColor: "#ee0a24",
+        });
+    } catch {
+        return;
+    }
+    showLoadingToast({ message: "删除中...", forbidClick: true, duration: 0 });
+    try {
+        await ep.tableBatch(bookId, "transactions", [
+            { type: "delete", value: tx.id },
+        ]);
+        await ep.toSync();
+        closeToast();
+        showToast("已删除");
+    } catch (e: unknown) {
+        closeToast();
+        const msg = e instanceof Error ? e.message : String(e ?? "未知错误");
+        showToast(`删除失败：${msg}`);
+    }
 }
 
 async function refreshData(bookId: string) {
@@ -152,77 +234,139 @@ onUnmounted(() => {
             <div class="journal-atmosphere__grain" />
         </div>
 
-        <div class="journal-inner">
+        <div class="journal-inner journal-inner--layout">
             <div class="journal-scroll-head">
                 <header class="journal-hero">
-                    <p class="journal-kicker">今日</p>
-                    <div class="journal-stats">
-                        <div class="journal-stat journal-stat--out">
-                            <span class="journal-stat__label">支出</span>
-                            <span class="journal-stat__value">{{
-                                todayExpenseLabel
-                            }}</span>
+                    <div class="journal-hero__top">
+                        <p class="journal-kicker">今日概览</p>
+                        <p class="journal-hero__note">各成员 · 仅收支 · 不含转账</p>
+                    </div>
+                    <div
+                        v-if="todayPerCreatorHero.length === 0"
+                        class="journal-hero-empty"
+                    >
+                        <p class="journal-hero-empty__text">
+                            今日暂无收支（仅统计收入与支出）
+                        </p>
+                    </div>
+                    <div v-else class="journal-stats-by-user">
+                        <div class="journal-stats-by-user__head" aria-hidden="true">
+                            <span class="journal-stats-by-user__h-name">成员</span>
+                            <span class="journal-stats-by-user__h-out">支出</span>
+                            <span class="journal-stats-by-user__h-in">收入</span>
                         </div>
-                        <div class="journal-stat-divider" aria-hidden="true" />
-                        <div class="journal-stat journal-stat--in">
-                            <span class="journal-stat__label">收入</span>
-                            <span class="journal-stat__value">{{
-                                todayIncomeLabel
-                            }}</span>
-                        </div>
+                        <ul class="journal-stats-by-user__list" role="list">
+                            <li
+                                v-for="row in todayPerCreatorHero"
+                                :key="row.creatorKey"
+                                class="journal-stats-by-user__row"
+                            >
+                                <span class="journal-stats-by-user__name">
+                                    {{ row.label }}
+                                    <span
+                                        v-if="row.isSelf"
+                                        class="journal-stats-by-user__me"
+                                    >
+                                        我
+                                    </span>
+                                </span>
+                                <span
+                                    class="journal-stats-by-user__num journal-stats-by-user__num--out"
+                                >
+                                    {{ row.expenseLabel }}
+                                </span>
+                                <span
+                                    class="journal-stats-by-user__num journal-stats-by-user__num--in"
+                                >
+                                    {{ row.incomeLabel }}
+                                </span>
+                            </li>
+                        </ul>
                     </div>
                     <div class="journal-hero__accent" aria-hidden="true" />
                 </header>
             </div>
 
-            <div class="journal-scroll-body">
             <section class="journal-section">
-                <h2 class="journal-section-title">今日流水</h2>
+                <h2 class="journal-section-title">
+                    <span class="journal-section-title__text">今日流水</span>
+                </h2>
 
-                <div v-if="bills.length === 0" class="journal-empty">
-                    <p class="journal-empty__title">账本还是空的</p>
-                    <p class="journal-empty__hint">记下第一笔，从今天开始。</p>
-                </div>
+                <div class="journal-list-scroll">
+                    <div v-if="bills.length === 0" class="journal-empty">
+                        <p class="journal-empty__title">账本还是空的</p>
+                        <p class="journal-empty__hint">记下第一笔，从今天开始。</p>
+                    </div>
 
-                <div
-                    v-else-if="todayRows.length === 0"
-                    class="journal-empty journal-empty--soft"
-                >
-                    <p class="journal-empty__title">今日还没有收支</p>
-                    <p class="journal-empty__hint">
-                        点击底部中间的「记一笔」（即将上线）。
-                    </p>
-                </div>
-
-                <ol v-else class="journal-timeline" role="list">
-                    <li
-                        v-for="(tx, i) in todayRows"
-                        :key="tx.id"
-                        class="journal-row"
-                        :class="rowModifier(tx)"
-                        :style="{ animationDelay: `${0.06 + i * 0.045}s` }"
+                    <div
+                        v-else-if="todayRows.length === 0"
+                        class="journal-empty journal-empty--soft"
                     >
-                        <div class="journal-row__rail" aria-hidden="true">
-                            <span class="journal-row__dot" />
-                        </div>
-                        <div class="journal-row__card">
-                            <div class="journal-row__top">
-                                <span class="journal-row__who">{{
-                                    creatorLabel(tx)
-                                }}</span>
-                                <time
-                                    class="journal-row__when"
-                                    :datetime="new Date(tx.time).toISOString()"
-                                    >{{ timeLabel(tx.time) }}</time
+                        <p class="journal-empty__title">今日还没有收支</p>
+                        <p class="journal-empty__hint">
+                            点击底部中间的「记一笔」。
+                        </p>
+                    </div>
+
+                    <ol v-else class="journal-timeline" role="list">
+                        <li
+                            v-for="(tx, i) in todayRows"
+                            :key="tx.id"
+                            class="journal-timeline__item"
+                            :style="{ animationDelay: `${0.06 + i * 0.045}s` }"
+                        >
+                            <van-swipe-cell class="journal-swipe">
+                                <div
+                                    class="journal-row"
+                                    :class="rowModifier(tx)"
                                 >
-                            </div>
-                            <p class="journal-row__what">{{ purposeLine(tx) }}</p>
-                            <p class="journal-row__money">{{ amountLabel(tx) }}</p>
-                        </div>
-                    </li>
-                </ol>
+                                    <div class="journal-row__card">
+                                        <div class="journal-row__top">
+                                            <span class="journal-row__who">{{
+                                                creatorLabel(tx)
+                                            }}</span>
+                                            <span
+                                                class="journal-row__pill"
+                                                :class="`journal-row__pill--${tx.type}`"
+                                            >
+                                                {{ flowKindLabel(tx) }}
+                                            </span>
+                                            <time
+                                                class="journal-row__when"
+                                                :datetime="
+                                                    new Date(
+                                                        tx.time,
+                                                    ).toISOString()
+                                                "
+                                            >
+                                                {{ timeLabel(tx.time) }}
+                                            </time>
+                                        </div>
+                                        <p class="journal-row__what">
+                                            {{ purposeLine(tx) }}
+                                        </p>
+                                        <p class="journal-row__money">
+                                            {{ amountLabel(tx) }}
+                                        </p>
+                                    </div>
+                                </div>
+                                <template #right>
+                                    <van-button
+                                        square
+                                        type="danger"
+                                        class="swipe-side-btn swipe-side-btn--del"
+                                        @click.stop="
+                                            confirmDeleteTransaction(tx)
+                                        "
+                                    >
+                                        删除
+                                    </van-button>
+                                </template>
+                            </van-swipe-cell>
+                        </li>
+                    </ol>
+                </div>
             </section>
-            </div>
         </div>
     </div>
 </template>
@@ -320,32 +464,67 @@ onUnmounted(() => {
     width: 100%;
 }
 
+.journal-inner--layout {
+    gap: 16px;
+}
+
 .journal-scroll-head {
     flex-shrink: 0;
     padding-top: 14px;
 }
 
-.journal-scroll-body {
+.journal-section {
     flex: 1;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.journal-list-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
-    /* 底栏已 fixed 占位；此处主要为中部「记一笔」球上半部分留出滚动空间 */
-    padding-bottom: 48px;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    /* 底栏 + 记一笔球占位 */
+    padding-bottom: calc(var(--ledger-pwa-tabbar-h, 68px) + 8px);
 }
 
 .journal-hero {
     position: relative;
-    margin-bottom: 22px;
-    padding: 20px 18px 22px;
-    border-radius: 20px;
-    background: var(--journal-paper);
+    margin-bottom: 0;
+    padding: 18px 16px 18px;
+    border-radius: 22px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.09);
+    background: linear-gradient(
+        165deg,
+        rgba(255, 254, 251, 0.98) 0%,
+        var(--ledger-paper-card) 55%,
+        var(--journal-paper) 100%
+    );
     box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.88) inset,
-        0 18px 42px -30px var(--ledger-shadow-ink);
+        0 1px 0 rgba(255, 255, 255, 0.9) inset,
+        0 20px 48px -34px var(--ledger-shadow-ink);
     overflow: hidden;
     opacity: 0;
     animation: journal-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.journal-hero__top {
+    margin-bottom: 14px;
+    padding-left: 2px;
+    padding-right: 4px;
+}
+
+.journal-hero__note {
+    margin: 8px 0 0;
+    padding-left: 2px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--ledger-ink-subtle);
 }
 
 .journal-hero__accent {
@@ -363,91 +542,185 @@ onUnmounted(() => {
 }
 
 .journal-kicker {
-    margin: 0 0 14px;
+    margin: 0;
+    font-family: var(--ledger-font-display);
+    font-size: clamp(1.35rem, 5vw, 1.6rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: var(--journal-ink);
+}
+
+.journal-hero-empty {
+    padding: 10px 8px 14px;
+}
+
+.journal-hero-empty__text {
+    margin: 0;
     padding-left: 6px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: var(--journal-accent);
+    line-height: 1.45;
+    color: var(--journal-muted);
 }
 
-.journal-stats {
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-    padding-left: 6px;
+.journal-stats-by-user {
+    padding: 2px 2px 0;
 }
 
-.journal-stat {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+.journal-stats-by-user__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px 12px;
+    align-items: baseline;
+    padding: 10px 12px 10px 14px;
+    margin-bottom: 6px;
+    border-radius: 12px;
+    background: rgba(var(--ledger-accent-rgb), 0.06);
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.08);
 }
 
-.journal-stat__label {
-    font-size: 11px;
+.journal-stats-by-user__h-name {
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--journal-muted);
 }
 
-.journal-stat__value {
-    font-family: var(--ledger-font-display);
-    font-size: clamp(1.55rem, 7vw, 2rem);
-    font-weight: 400;
-    line-height: 1.08;
-    letter-spacing: -0.03em;
-    font-variant-numeric: tabular-nums;
-}
-
-.journal-stat--out .journal-stat__value {
-    color: var(--journal-expense);
-}
-
-.journal-stat--in .journal-stat__value {
-    color: var(--journal-income);
-}
-
-.journal-stat-divider {
-    width: 1px;
-    margin: 4px 12px;
-    align-self: stretch;
-    background: linear-gradient(
-        180deg,
-        transparent,
-        rgba(87, 83, 78, 0.22),
-        transparent
-    );
-}
-
-.journal-section-title {
-    margin: 0 0 14px;
-    padding-left: 4px;
-    font-size: 13px;
+.journal-stats-by-user__h-out,
+.journal-stats-by-user__h-in {
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--journal-muted);
+    text-align: right;
+    min-width: 5.5rem;
+}
+
+.journal-stats-by-user__list {
+    margin: 0;
+    padding: 6px 4px 4px;
+    list-style: none;
+    max-height: min(38vh, 240px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 14px;
+    background: rgba(255, 254, 251, 0.65);
+    border: 1px solid rgba(28, 25, 23, 0.05);
+}
+
+.journal-stats-by-user__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px 12px;
+    align-items: baseline;
+    padding: 11px 12px;
+    border-bottom: 1px solid rgba(28, 25, 23, 0.05);
+    transition: background 0.15s ease;
+}
+
+.journal-stats-by-user__row:last-child {
+    border-bottom: none;
+}
+
+.journal-stats-by-user__row:active {
+    background: rgba(var(--ledger-accent-rgb), 0.04);
+}
+
+.journal-stats-by-user__name {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--journal-ink);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.journal-stats-by-user__me {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    vertical-align: middle;
+    color: var(--journal-accent);
+    background: rgba(var(--ledger-accent-rgb), 0.12);
+}
+
+.journal-stats-by-user__num {
+    font-family: var(--ledger-font-display);
+    font-size: clamp(1rem, 4.2vw, 1.15rem);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    text-align: right;
+    min-width: 5.5rem;
+}
+
+.journal-stats-by-user__num--out {
+    color: var(--journal-expense);
+}
+
+.journal-stats-by-user__num--in {
+    color: var(--journal-income);
+}
+
+.journal-section-title {
+    flex-shrink: 0;
+    margin: 0 0 14px;
+    padding-left: 14px;
+    position: relative;
     opacity: 0;
     animation: journal-rise 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
 }
 
+.journal-section-title::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.2em;
+    bottom: 0.2em;
+    width: 3px;
+    border-radius: 999px;
+    background: linear-gradient(
+        180deg,
+        var(--journal-accent) 0%,
+        rgba(var(--ledger-accent-rgb), 0.35) 100%
+    );
+}
+
+.journal-section-title__text {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--journal-muted);
+}
+
 .journal-empty {
-    padding: 36px 16px 28px;
+    padding: 40px 18px 32px;
     text-align: center;
-    border-radius: 18px;
-    border: 1px dashed rgba(87, 83, 78, 0.26);
-    background: rgba(255, 254, 251, 0.55);
+    border-radius: 20px;
+    border: 1px dashed rgba(87, 83, 78, 0.22);
+    background: linear-gradient(
+        165deg,
+        rgba(255, 254, 251, 0.85) 0%,
+        rgba(255, 254, 251, 0.5) 100%
+    );
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset;
 }
 
 .journal-empty--soft {
     border-style: solid;
-    border-color: rgba(45, 106, 79, 0.12);
-    background: rgba(255, 254, 251, 0.72);
+    border-color: rgba(var(--ledger-accent-rgb), 0.14);
+    background: rgba(255, 254, 251, 0.78);
 }
 
 .journal-empty__title {
@@ -471,83 +744,99 @@ onUnmounted(() => {
     list-style: none;
 }
 
-.journal-row {
-    display: flex;
-    gap: 12px;
+.journal-timeline__item {
     margin-bottom: 14px;
     opacity: 0;
     animation: journal-rise 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.journal-row__rail {
-    flex-shrink: 0;
-    width: 14px;
-    position: relative;
-    display: flex;
-    justify-content: center;
+.journal-timeline__item:last-child {
+    margin-bottom: 0;
 }
 
-.journal-row__rail::before {
-    content: "";
-    position: absolute;
-    top: 10px;
-    bottom: -14px;
-    width: 2px;
-    border-radius: 2px;
-    background: linear-gradient(
-        180deg,
-        rgba(45, 106, 79, 0.35),
-        rgba(87, 83, 78, 0.12)
-    );
+.journal-swipe {
+    border-radius: 17px;
+    overflow: hidden;
 }
 
-.journal-row:last-child .journal-row__rail::before {
+.journal-swipe :deep(.van-swipe-cell__wrapper) {
+    border-radius: 17px;
+}
+
+.journal-swipe :deep(.van-swipe-cell__right) {
+    top: 0;
     bottom: 0;
-    background: rgba(45, 106, 79, 0.22);
 }
 
-.journal-row__dot {
-    position: relative;
-    z-index: 1;
-    margin-top: 8px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: var(--journal-paper);
-    border: 2px solid var(--journal-accent);
-    box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.12);
-}
-
-.journal-row.is-expense .journal-row__dot {
-    border-color: var(--journal-expense);
-    box-shadow: 0 0 0 3px rgba(154, 52, 18, 0.12);
-}
-
-.journal-row.is-income .journal-row__dot {
-    border-color: var(--journal-income);
-    box-shadow: 0 0 0 3px rgba(22, 101, 52, 0.12);
-}
-
-.journal-row.is-transfer .journal-row__dot {
-    border-color: var(--journal-muted);
+.swipe-side-btn {
+    height: 100%;
+    width: 76px;
+    padding: 0 6px;
+    border: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: pre-line;
 }
 
 .journal-row__card {
-    flex: 1;
     min-width: 0;
-    padding: 14px 16px;
-    border-radius: 16px;
+    padding: 14px 15px 14px 14px;
+    border-radius: 17px;
     background: var(--journal-paper);
-    border: 1px solid rgba(45, 106, 79, 0.07);
-    box-shadow: 0 12px 28px -24px rgba(28, 25, 23, 0.45);
+    border: 1px solid rgba(45, 106, 79, 0.08);
+    border-left-width: 3px;
+    border-left-color: rgba(var(--ledger-accent-rgb), 0.35);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.82) inset,
+        0 14px 32px -26px rgba(28, 25, 23, 0.42);
+}
+
+.journal-row.is-expense .journal-row__card {
+    border-left-color: rgba(var(--ledger-warm-rgb), 0.65);
+}
+
+.journal-row.is-income .journal-row__card {
+    border-left-color: rgba(22, 101, 52, 0.55);
+}
+
+.journal-row.is-transfer .journal-row__card {
+    border-left-color: rgba(87, 83, 78, 0.35);
 }
 
 .journal-row__top {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px 10px;
     margin-bottom: 8px;
+}
+
+.journal-row__pill {
+    flex-shrink: 0;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+
+.journal-row__pill--expense {
+    color: var(--journal-expense);
+    background: rgba(var(--ledger-warm-rgb), 0.12);
+}
+
+.journal-row__pill--income {
+    color: var(--journal-income);
+    background: rgba(22, 101, 52, 0.1);
+}
+
+.journal-row__pill--transfer {
+    color: var(--journal-muted);
+    background: rgba(87, 83, 78, 0.1);
 }
 
 .journal-row__who {
@@ -577,10 +866,12 @@ onUnmounted(() => {
 
 .journal-row__money {
     margin: 0;
-    font-size: 17px;
-    font-weight: 700;
+    font-family: var(--ledger-font-display);
+    font-size: clamp(1.05rem, 4.5vw, 1.25rem);
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
+    text-align: right;
 }
 
 .journal-row.is-expense .journal-row__money {
