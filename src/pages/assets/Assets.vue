@@ -616,7 +616,7 @@ onUnmounted(() => {
     min-height: 0;
     overflow-y: auto;
     padding: 16px 18px;
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 72px;
     max-width: 480px;
     margin: 0 auto;
     width: 100%;

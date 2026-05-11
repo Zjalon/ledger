@@ -75,9 +75,8 @@ body {
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
-	/* 顶栏由各页 NavBar / MainLayout 自行处理 safe-area-inset-top */
-	padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom)
-		env(safe-area-inset-left);
+	/* 仅左右安全区；底部由 MainLayout 底栏统一处理，避免与 tabbar 重复叠加 */
+	padding: 0 env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
 }
 
 /* 路由根节点填满高度，避免 height:100% 在 flex 父级下失效 */

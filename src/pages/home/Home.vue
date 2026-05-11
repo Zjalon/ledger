@@ -309,7 +309,8 @@ onUnmounted(() => {
     min-height: 0;
     overflow-y: auto;
     padding: 14px 16px;
-    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    /* 为中部「记一笔」按钮留出滚动空间；底部安全区由 MainLayout 底栏承担 */
+    padding-bottom: 76px;
     max-width: 480px;
     margin: 0 auto;
     width: 100%;

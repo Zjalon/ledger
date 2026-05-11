@@ -193,7 +193,7 @@ async function confirmAdd() {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 24px;
     font-family: var(--cent-font-ui);
     color: var(--cent-ink);
     background: var(--cent-paper);

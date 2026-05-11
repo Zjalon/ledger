@@ -264,8 +264,8 @@ const onSyncClick = async () => {
     align-items: center;
     gap: 0;
     box-sizing: border-box;
-    min-height: calc(var(--tabbar-row-h) + env(safe-area-inset-bottom, 0px));
-    padding: 8px 8px env(safe-area-inset-bottom, 0px);
+    /* 仅此处预留底部安全区，避免与 #app 重复 */
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
     background: var(--tabbar-paper);
     border-top: 1px solid rgba(var(--cent-accent-rgb), 0.1);
     box-shadow:
