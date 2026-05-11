@@ -1,104 +1,25 @@
+import type { Modal } from "@/components/modal";
 import { asyncOnce } from "@/utils/async";
 
-// 从环境变量读取 LOGIN_API_HOST
-const LOGIN_API_HOST = import.meta.env.VITE_LOGIN_API_HOST;
 const LOCAL_TOKEN_KEY = "gitee_user_token";
 
-const { promise: loginFinished, resolve: resolveLoginFinished } =
-    Promise.withResolvers<void>();
-
+/**
+ * Gitee 同步所需的令牌读写。
+ * 本项目仅支持在登录页粘贴 **私人令牌**（Personal Access Token），不使用 OAuth 跳转与自建登录中转。
+ */
 export const createLoginAPI = () => {
-    const login = () => {
-        window.open(
-            `${LOGIN_API_HOST}/api/gitee-oauth/authorize?redirect_uri=${encodeURIComponent(`${window.origin}`)}`,
-            "_self",
-        );
+    const login = (_ctx: { modal: Modal }) => {
+        /* SyncEndpointFactory 占位：实际登录见 Login.vue 手动粘贴令牌 */
     };
 
-    const afterLogin = async () => {
-        const resText = localStorage.getItem("_oauth_res");
-        if (!resText) {
-            resolveLoginFinished();
-            return;
-        }
-        const res = JSON.parse(resText);
-        if (res.type !== "gitee") {
-            return;
-        }
-        localStorage.removeItem("_oauth_res");
-        const url = new URL(res.url);
-        const tokenData = JSON.parse(
-            url.searchParams.get("gitee_authorized") ?? "{}",
-        );
-        const accessToken = tokenData["access_token"];
-        const expiresIn = tokenData["expires_in"];
-        const refreshToken = tokenData["refresh_token"];
-        const refreshTokenExpiresIn = tokenData["refresh_token_expires_in"];
-        const tokenType = tokenData["token_type"];
-        const scope = tokenData["scope"];
-
-        if (accessToken)
-            localStorage.setItem(
-                LOCAL_TOKEN_KEY,
-                JSON.stringify({
-                    accessToken,
-                    expiresIn: Date.now() + expiresIn,
-                    refreshToken,
-                    refreshTokenExpiresIn: Date.now() + refreshTokenExpiresIn,
-                    tokenType,
-                    scope,
-                }),
-            );
-        resolveLoginFinished();
+    const afterLogin = () => {
+        /* 不使用 OAuth 回调 */
     };
 
     const _getToken = async () => {
-        await loginFinished;
         const token = getLocalToken();
-        if (!token) {
+        if (!token?.accessToken) {
             throw new Error("token not found");
-        }
-        if (token.expiresIn) {
-            const now = Date.now();
-            const diff = token.expiresIn - now;
-            // 小于2小时 刷新token
-            if (diff < 2 * 60 * 60 * 1000) {
-                // to refresh
-                const res = await fetch(
-                    `${LOGIN_API_HOST}/api/gitee-oauth/refresh-token`,
-                    {
-                        method: "POST",
-                        body: JSON.stringify({
-                            refreshToken: token.refreshToken,
-                        }),
-                    },
-                );
-                const tokenData = (await res.json()) as GiteeTokenResponse;
-                const accessToken = tokenData["access_token"];
-                const expiresIn = tokenData["expires_in"];
-                const refreshToken = tokenData["refresh_token"];
-                const refreshTokenExpiresIn =
-                    tokenData["refresh_token_expires_in"];
-                const tokenType = tokenData["token_type"];
-                const scope = tokenData["scope"];
-                const newToken = {
-                    accessToken,
-                    expiresIn: Date.now() + expiresIn * 1000,
-                    refreshToken,
-                    refreshTokenExpiresIn:
-                        Date.now() +
-                        (refreshTokenExpiresIn ?? 60 * 24 * 60 * 60) * 1000,
-                    tokenType,
-                    scope,
-                };
-                if (accessToken) {
-                    localStorage.setItem(
-                        LOCAL_TOKEN_KEY,
-                        JSON.stringify(newToken),
-                    );
-                    return newToken;
-                }
-            }
         }
         return token;
     };
@@ -130,15 +51,6 @@ export const createLoginAPI = () => {
         getLocalToken,
         afterLogin,
     };
-};
-
-type GiteeTokenResponse = {
-    access_token: string;
-    expires_in: number;
-    refresh_token: string;
-    refresh_token_expires_in: number;
-    scope: string;
-    token_type: string;
 };
 
 type Token = {
