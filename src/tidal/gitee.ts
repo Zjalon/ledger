@@ -528,10 +528,32 @@ export const createGiteeSyncer = (config: {
     };
 
     const fetchAllStore = async () => {
-        const repos = await giteeRequest<any[]>("GET", `/user/repos`);
-        return (repos || [])
-            .filter((repo) => repo.name.startsWith(repoPrefix))
-            .map((repo) => repo.full_name);
+        const perPage = 100;
+        const merged: any[] = [];
+        for (let page = 1; page <= 50; page++) {
+            const qs = new URLSearchParams({
+                per_page: String(perPage),
+                page: String(page),
+            });
+            const repos = await giteeRequest<any[]>(
+                "GET",
+                `/user/repos?${qs.toString()}`,
+            );
+            if (!Array.isArray(repos) || repos.length === 0) {
+                break;
+            }
+            merged.push(...repos);
+            if (repos.length < perPage) {
+                break;
+            }
+        }
+        return merged
+            .filter(
+                (repo) =>
+                    typeof repo.name === "string" &&
+                    repo.name.startsWith(repoPrefix),
+            )
+            .map((repo) => repo.full_name as string);
     };
 
     return {
