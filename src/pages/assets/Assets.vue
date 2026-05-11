@@ -11,6 +11,12 @@ import { useSync } from "@/composables/use-sync";
 import { shortId } from "@/database/id";
 import type { Full } from "@/database/stash";
 import type { Account } from "@/database/tables/account";
+import {
+    ACCOUNT_TYPE_PRESETS,
+    accountIconForDisplay,
+    iconForAccountType,
+    resolvedAccountType,
+} from "@/ledger/account-display";
 import { applyAccountDisplayOrder } from "@/ledger/account-order";
 import { amountToNumber, numberToAmount } from "@/ledger/bill";
 import type { PersonalMeta } from "@/ledger/extra-type";
@@ -39,16 +45,6 @@ const COLOR_PRESETS = [
     "#e76f51",
     "#606c38",
 ] as const;
-
-/** 账户类型与列表图标一一对应（Vant Icon name） */
-const ACCOUNT_TYPE_PRESETS: { id: string; label: string; icon: string }[] = [
-    { id: "cash", label: "现金", icon: "gold-coin-o" },
-    { id: "bank", label: "银行卡", icon: "credit-pay" },
-    { id: "alipay", label: "支付宝", icon: "balance-pay" },
-    { id: "wechat", label: "微信", icon: "chat-o" },
-    { id: "wallet", label: "钱包", icon: "balance-o" },
-    { id: "savings", label: "储蓄", icon: "gem-o" },
-];
 
 const totalRaw = computed(() =>
     accounts.value.reduce((s, a) => s + (a.initialBalance ?? 0), 0),
@@ -94,21 +90,6 @@ const actionSheetActions = [
 
 function balanceLabel(raw?: number) {
     return fmt.format(amountToNumber(raw ?? 0));
-}
-
-/** 展示与保存均以 accountType 为准；缺失时回退默认类型 */
-function resolvedAccountType(acc: Account): string {
-    return acc.accountType ?? ACCOUNT_TYPE_PRESETS[0].id;
-}
-
-function iconForAccountType(typeId: string): string {
-    const p = ACCOUNT_TYPE_PRESETS.find((x) => x.id === typeId);
-    return p?.icon ?? ACCOUNT_TYPE_PRESETS[0].icon;
-}
-
-/** 列表头像：由账户类型决定图标 */
-function accountIconForDisplay(acc: Account): string {
-    return iconForAccountType(resolvedAccountType(acc));
 }
 
 function resetForm() {
@@ -324,10 +305,15 @@ onUnmounted(() => {
             <div class="assets-atmosphere__grain" />
         </div>
 
-        <div class="assets-inner">
+        <div class="assets-inner assets-inner--layout">
             <div class="assets-scroll-head">
                 <header class="assets-hero">
-                    <p class="assets-kicker">全部账户</p>
+                    <div class="assets-hero__top">
+                        <p class="assets-kicker">资产总览</p>
+                        <p class="assets-hero__note">
+                            折合人民币汇总 · 左滑调余额 · 右滑删除
+                        </p>
+                    </div>
                     <div class="assets-total-wrap">
                         <p class="assets-total-label">折合总额（CNY）</p>
                         <p class="assets-total-value">{{ totalLabel }}</p>
@@ -336,10 +322,11 @@ onUnmounted(() => {
                 </header>
             </div>
 
-            <div class="assets-scroll-body">
             <section class="assets-section">
                 <div class="assets-section-head">
-                    <h2 class="assets-section-title">账户列表</h2>
+                    <h2 class="assets-section-title">
+                        <span class="assets-section-title__text">账户列表</span>
+                    </h2>
                     <button
                         type="button"
                         class="assets-add-inline"
@@ -349,87 +336,89 @@ onUnmounted(() => {
                     </button>
                 </div>
 
-                <ul
-                    v-if="sortedAccounts.length > 0"
-                    class="assets-list"
-                    role="list"
-                >
-                    <li
-                        v-for="(acc, i) in sortedAccounts"
-                        :key="acc.id"
-                        class="assets-card-wrap"
-                        :style="{ animationDelay: `${0.08 + i * 0.05}s` }"
+                <div class="assets-list-scroll">
+                    <ul
+                        v-if="sortedAccounts.length > 0"
+                        class="assets-list"
+                        role="list"
                     >
-                        <van-swipe-cell class="assets-swipe">
-                            <template #left>
-                                <van-button
-                                    square
-                                    type="primary"
-                                    class="swipe-side-btn swipe-side-btn--balance"
-                                    @click.stop="openAdjustBalance(acc)"
+                        <li
+                            v-for="(acc, i) in sortedAccounts"
+                            :key="acc.id"
+                            class="assets-card-wrap"
+                            :style="{ animationDelay: `${0.08 + i * 0.05}s` }"
+                        >
+                            <van-swipe-cell class="assets-swipe">
+                                <template #left>
+                                    <van-button
+                                        square
+                                        type="primary"
+                                        class="swipe-side-btn swipe-side-btn--balance"
+                                        @click.stop="openAdjustBalance(acc)"
+                                    >
+                                        调余额
+                                    </van-button>
+                                </template>
+                                <button
+                                    type="button"
+                                    class="assets-card"
+                                    :style="{
+                                        '--asset-accent': acc.color || '#2d6a4f',
+                                    }"
+                                    @click="openMenu(acc)"
                                 >
-                                    调余额
-                                </van-button>
-                            </template>
+                                    <div
+                                        class="assets-card__avatar"
+                                        :style="{
+                                            background: acc.color || '#2d6a4f',
+                                        }"
+                                    >
+                                        <van-icon
+                                            :name="accountIconForDisplay(acc)"
+                                            class="assets-card__avatar-icon"
+                                        />
+                                    </div>
+                                    <div class="assets-card__body">
+                                        <p class="assets-card__name">
+                                            {{ acc.name }}
+                                        </p>
+                                    </div>
+                                    <p class="assets-card__amount">
+                                        {{ balanceLabel(acc.initialBalance) }}
+                                    </p>
+                                </button>
+                                <template #right>
+                                    <van-button
+                                        square
+                                        type="danger"
+                                        class="swipe-side-btn swipe-side-btn--del"
+                                        @click.stop="confirmDelete(acc)"
+                                    >
+                                        删除
+                                    </van-button>
+                                </template>
+                            </van-swipe-cell>
+                        </li>
+                    </ul>
+
+                    <div v-else class="assets-empty">
+                        <div class="assets-empty__frame">
+                            <span class="assets-empty__glyph" aria-hidden="true">◇</span>
+                            <p class="assets-empty__title">还没有账户</p>
+                            <p class="assets-empty__hint">
+                                点击下方按钮添加，或创建你的第一个账户。
+                            </p>
                             <button
                                 type="button"
-                                class="assets-card"
-                                @click="openMenu(acc)"
+                                class="assets-empty__cta"
+                                @click="openCreate"
                             >
-                                <div
-                                    class="assets-card__avatar"
-                                    :style="{
-                                        background: acc.color || '#2d6a4f',
-                                    }"
-                                >
-                                    <van-icon
-                                        :name="accountIconForDisplay(acc)"
-                                        class="assets-card__avatar-icon"
-                                    />
-                                </div>
-                                <div class="assets-card__body">
-                                    <p class="assets-card__name">
-                                        {{ acc.name }}
-                                    </p>
-                                </div>
-                                <p class="assets-card__amount">
-                                    {{ balanceLabel(acc.initialBalance) }}
-                                </p>
+                                添加账户
                             </button>
-                            <template #right>
-                                <van-button
-                                    square
-                                    type="danger"
-                                    class="swipe-side-btn swipe-side-btn--del"
-                                    @click.stop="confirmDelete(acc)"
-                                >
-                                    删除
-                                </van-button>
-                            </template>
-                        </van-swipe-cell>
-                    </li>
-                </ul>
-
-                <div v-else class="assets-empty">
-                    <div class="assets-empty__frame">
-                        <span class="assets-empty__glyph" aria-hidden="true"
-                            >◇</span
-                        >
-                        <p class="assets-empty__title">还没有账户</p>
-                        <p class="assets-empty__hint">
-                            点击下方按钮添加，或创建你的第一个账户。
-                        </p>
-                        <button
-                            type="button"
-                            class="assets-empty__cta"
-                            @click="openCreate"
-                        >
-                            添加账户
-                        </button>
+                        </div>
                     </div>
                 </div>
             </section>
-            </div>
         </div>
 
         <van-action-sheet
@@ -650,31 +639,64 @@ onUnmounted(() => {
     width: 100%;
 }
 
+.assets-inner--layout {
+    gap: 16px;
+}
+
 .assets-scroll-head {
     flex-shrink: 0;
     padding-top: 16px;
 }
 
-.assets-scroll-body {
+.assets-section {
     flex: 1;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.assets-list-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
-    padding-bottom: 48px;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: calc(var(--ledger-pwa-tabbar-h, 68px) + 8px);
 }
 
 .assets-hero {
     position: relative;
-    margin-bottom: 28px;
-    padding: 22px 20px 26px;
-    border-radius: 20px;
-    background: var(--assets-paper);
+    margin-bottom: 0;
+    padding: 18px 16px 20px;
+    border-radius: 22px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.09);
+    background: linear-gradient(
+        165deg,
+        rgba(255, 254, 251, 0.98) 0%,
+        var(--ledger-paper-card) 52%,
+        var(--assets-paper) 100%
+    );
     box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.85) inset,
-        0 18px 40px -28px rgba(28, 25, 23, 0.35);
+        0 1px 0 rgba(255, 255, 255, 0.9) inset,
+        0 20px 48px -34px rgba(28, 25, 23, 0.38);
     overflow: hidden;
     opacity: 0;
     animation: assets-rise 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.assets-hero__top {
+    margin-bottom: 16px;
+    padding-left: 2px;
+}
+
+.assets-hero__note {
+    margin: 8px 0 0;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--ledger-ink-subtle);
 }
 
 .assets-hero__accent {
@@ -692,17 +714,17 @@ onUnmounted(() => {
 }
 
 .assets-kicker {
-    margin: 0 0 14px;
-    padding-left: 8px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: var(--assets-accent);
+    margin: 0;
+    font-family: var(--ledger-font-display);
+    font-size: clamp(1.35rem, 5vw, 1.65rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: var(--assets-ink);
 }
 
 .assets-total-wrap {
-    padding-left: 8px;
+    padding-left: 4px;
 }
 
 .assets-total-label {
@@ -726,33 +748,55 @@ onUnmounted(() => {
 
 .assets-section-head {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 
 .assets-section-title {
+    flex: 1;
+    min-width: 0;
     margin: 0;
-    padding-left: 4px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--assets-muted);
+    padding-left: 14px;
+    position: relative;
     opacity: 0;
     animation: assets-rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards;
 }
 
+.assets-section-title::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.15em;
+    bottom: 0.15em;
+    width: 3px;
+    border-radius: 999px;
+    background: linear-gradient(
+        180deg,
+        var(--assets-accent) 0%,
+        rgba(var(--ledger-accent-rgb), 0.35) 100%
+    );
+}
+
+.assets-section-title__text {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--assets-muted);
+}
+
 .assets-add-inline {
     flex-shrink: 0;
-    padding: 8px 14px;
+    margin-top: 1px;
+    padding: 9px 16px;
     border: none;
     border-radius: 999px;
     font-family: inherit;
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     color: #fff;
     cursor: pointer;
     background: linear-gradient(
@@ -760,7 +804,9 @@ onUnmounted(() => {
         var(--assets-accent) 0%,
         var(--ledger-accent-deep) 100%
     );
-    box-shadow: 0 3px 12px -4px rgba(var(--ledger-accent-rgb), 0.45);
+    box-shadow:
+        0 4px 14px -6px rgba(var(--ledger-accent-rgb), 0.55),
+        0 1px 0 rgba(255, 255, 255, 0.22) inset;
 }
 
 .assets-add-inline:active {
@@ -774,18 +820,22 @@ onUnmounted(() => {
 }
 
 .assets-card-wrap {
-    margin-bottom: 11px;
+    margin-bottom: 12px;
     opacity: 0;
     animation: assets-rise 0.58s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+.assets-card-wrap:last-child {
+    margin-bottom: 0;
+}
+
 .assets-swipe {
-    border-radius: 16px;
+    border-radius: 17px;
     overflow: hidden;
 }
 
 .assets-swipe :deep(.van-swipe-cell__wrapper) {
-    border-radius: 16px;
+    border-radius: 17px;
 }
 
 .assets-swipe :deep(.van-swipe-cell__left),
@@ -821,16 +871,18 @@ onUnmounted(() => {
     gap: 14px;
     width: 100%;
     margin: 0;
-    padding: 14px 16px;
-    border: none;
-    border-radius: 16px;
+    padding: 14px 15px 14px 13px;
+    border-radius: 17px;
     text-align: left;
     cursor: pointer;
     font: inherit;
     color: inherit;
     background: var(--assets-paper);
-    border: 1px solid rgba(var(--ledger-accent-rgb), 0.08);
-    box-shadow: 0 10px 28px -22px rgba(28, 25, 23, 0.45);
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.09);
+    border-left: 3px solid var(--asset-accent, rgba(var(--ledger-accent-rgb), 0.45));
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.82) inset,
+        0 14px 32px -26px rgba(28, 25, 23, 0.42);
 }
 
 .assets-card:active {
@@ -876,10 +928,11 @@ onUnmounted(() => {
 .assets-card__amount {
     margin: 0;
     flex-shrink: 0;
-    font-size: 15px;
-    font-weight: 700;
+    font-family: var(--ledger-font-display);
+    font-size: clamp(1.05rem, 4.2vw, 1.2rem);
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     color: var(--assets-ink);
 }
 
@@ -889,10 +942,15 @@ onUnmounted(() => {
 
 .assets-empty__frame {
     text-align: center;
-    padding: 28px 20px;
-    border-radius: 18px;
-    border: 1px dashed rgba(87, 83, 78, 0.28);
-    background: rgba(255, 254, 251, 0.55);
+    padding: 32px 22px;
+    border-radius: 20px;
+    border: 1px dashed rgba(87, 83, 78, 0.22);
+    background: linear-gradient(
+        165deg,
+        rgba(255, 254, 251, 0.88) 0%,
+        rgba(255, 254, 251, 0.52) 100%
+    );
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.78) inset;
 }
 
 .assets-empty__glyph {

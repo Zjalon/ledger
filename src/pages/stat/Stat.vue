@@ -632,15 +632,14 @@ onUnmounted(() => {
             <div class="stat-atmosphere__grain" />
         </div>
         <div class="stat-inner">
-            <div class="stat-scroll-body">
-                <section v-if="bills.length > 0" class="stat-pie-card">
-                    <h2 class="stat-pie-card__title">收支构成</h2>
-                    <p class="stat-pie-card__subtitle">
+            <div class="stat-scroll-body stat-scroll-body--stack">
+                <section v-if="bills.length > 0" class="stat-section stat-pie-card">
+                    <h2 class="stat-section__title stat-pie-card__title">收支构成</h2>
+                    <p class="stat-section__lead stat-pie-card__subtitle">
                         不含转账 · 按金额占比
                     </p>
                     <van-tabs
                         v-model:active="rangeKind"
-                        shrink
                         type="card"
                         class="stat-compose-tabs"
                     >
@@ -728,15 +727,14 @@ onUnmounted(() => {
                     />
                 </section>
 
-                <section v-if="bills.length > 0" class="stat-split-card">
-                    <h2 class="stat-split-card__title">分类与成员</h2>
-                    <p class="stat-split-card__subtitle">
+                <section v-if="bills.length > 0" class="stat-section stat-split-card">
+                    <h2 class="stat-section__title stat-split-card__title">分类与成员</h2>
+                    <p class="stat-section__lead stat-split-card__subtitle">
                         {{ splitPiePeriodLabel }} · {{ splitPieDimHint }} · 合计
                         {{ splitPieTotalLabel }}
                     </p>
                     <van-tabs
                         v-model:active="splitPieRange"
-                        shrink
                         type="card"
                         class="stat-split-tabs stat-split-tabs--range"
                     >
@@ -746,7 +744,6 @@ onUnmounted(() => {
                     </van-tabs>
                     <van-tabs
                         v-model:active="splitPieFlowKind"
-                        shrink
                         type="card"
                         class="stat-split-tabs stat-split-tabs--flow"
                     >
@@ -815,15 +812,14 @@ onUnmounted(() => {
                     />
                 </section>
 
-                <section v-if="bills.length > 0" class="stat-member-card">
-                    <h2 class="stat-member-card__title">本月成员构成</h2>
-                    <p class="stat-member-card__subtitle">
+                <section v-if="bills.length > 0" class="stat-section stat-member-card">
+                    <h2 class="stat-section__title stat-member-card__title">本月成员构成</h2>
+                    <p class="stat-section__lead stat-member-card__subtitle">
                         {{ trendMonthLabel }} · 按创建者 · 不含转账 · 合计
                         {{ memberMonthTotalLabel }}
                     </p>
                     <van-tabs
                         v-model:active="memberPieKind"
-                        shrink
                         type="card"
                         class="stat-member-tabs"
                     >
@@ -883,15 +879,14 @@ onUnmounted(() => {
                     description="暂无账单数据"
                 />
 
-                <section v-if="bills.length > 0" class="stat-line-card">
-                    <h2 class="stat-line-card__title">本月每日趋势</h2>
-                    <p class="stat-line-card__subtitle">
+                <section v-if="bills.length > 0" class="stat-section stat-line-card">
+                    <h2 class="stat-section__title stat-line-card__title">本月每日趋势</h2>
+                    <p class="stat-section__lead stat-line-card__subtitle">
                         {{ trendMonthLabel }} · 不含转账 · 合计
                         {{ trendMonthTotalLabel }}
                     </p>
                     <van-tabs
                         v-model:active="trendKind"
-                        shrink
                         type="card"
                         class="stat-trend-tabs"
                     >
@@ -1069,27 +1064,89 @@ onUnmounted(() => {
     -webkit-overflow-scrolling: touch;
 }
 
+.stat-scroll-body--stack {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding-top: 14px;
+    padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+}
+
+.stat-section {
+    position: relative;
+}
+
+.stat-section__title {
+    position: relative;
+    margin: 0 0 8px;
+    padding-left: 14px;
+    font-family: var(--ledger-font-display);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--ledger-ink);
+}
+
+.stat-section__title::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.28em;
+    bottom: 0.28em;
+    width: 3px;
+    border-radius: 999px;
+    background: linear-gradient(
+        180deg,
+        var(--ledger-accent) 0%,
+        rgba(var(--ledger-accent-rgb), 0.35) 100%
+    );
+}
+
+.stat-section__lead {
+    margin: 0 0 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ledger-ink-muted);
+    line-height: 1.5;
+}
+
 .stat-compose-tabs :deep(.van-tabs__wrap) {
-    margin-bottom: 8px;
+    overflow: visible;
+    margin-bottom: 10px;
 }
 
 .stat-compose-tabs :deep(.van-tabs__nav--card) {
+    width: 100%;
     margin: 0;
-    border-radius: 12px;
-    border: 1px solid rgba(var(--ledger-accent-rgb), 0.18);
-    background: rgba(255, 254, 251, 0.65);
+    border-radius: 14px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.16);
+    background: rgba(255, 254, 251, 0.72);
+    backdrop-filter: blur(8px);
 }
 
 .stat-compose-tabs :deep(.van-tab--card) {
-    border-radius: 10px;
+    flex: 1 1 0;
+    min-width: 0;
+    border-radius: 11px;
+    padding: 12px 8px;
     color: var(--ledger-ink-muted);
-    font-weight: 600;
-    font-size: 13px;
+    font-weight: 700;
+    font-size: 14px;
+    transition:
+        color 0.18s ease,
+        background 0.18s ease,
+        box-shadow 0.18s ease;
 }
 
 .stat-compose-tabs :deep(.van-tab--card.van-tab--active) {
     color: #fff;
-    background: var(--ledger-accent);
+    background: linear-gradient(
+        145deg,
+        var(--ledger-accent) 0%,
+        var(--ledger-accent-deep) 100%
+    );
+    box-shadow: 0 10px 22px -14px rgba(var(--ledger-accent-rgb), 0.55);
 }
 
 .stat-compose-period {
@@ -1158,6 +1215,7 @@ onUnmounted(() => {
 .stat-pie-card {
     padding: 20px 18px 22px;
     border-radius: 20px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.07);
     background: var(--ledger-paper-elevated);
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.88) inset,
@@ -1165,29 +1223,26 @@ onUnmounted(() => {
 }
 
 .stat-split-card {
-    margin-top: 18px;
+    margin-top: 0;
     padding: 20px 18px 22px;
     border-radius: 20px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.07);
     background: var(--ledger-paper-elevated);
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.88) inset,
         0 18px 42px -30px var(--ledger-shadow-ink);
 }
 
-.stat-split-card__title {
-    margin: 0 0 4px;
-    font-family: var(--ledger-font-display);
-    font-size: 20px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
+.stat-split-card__title,
+.stat-member-card__title,
+.stat-line-card__title {
+    margin: 0;
 }
 
-.stat-split-card__subtitle {
-    margin: 0 0 14px;
-    font-size: 12px;
-    color: var(--ledger-ink-muted);
-    font-weight: 500;
-    line-height: 1.45;
+.stat-split-card__subtitle,
+.stat-member-card__subtitle,
+.stat-line-card__subtitle {
+    margin: 0;
 }
 
 .stat-split-tabs {
@@ -1204,29 +1259,94 @@ onUnmounted(() => {
 
 .stat-split-tabs--members :deep(.van-tabs__nav--card) {
     flex-wrap: nowrap;
+    margin: 0;
+    border-radius: 14px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.16);
+    background: rgba(255, 254, 251, 0.72);
+    backdrop-filter: blur(8px);
+}
+
+.stat-split-tabs--members :deep(.van-tab--card) {
+    flex: 0 0 auto;
+    border-radius: 11px;
+    padding: 9px 14px;
+    color: var(--ledger-ink-muted);
+    font-weight: 700;
+    font-size: 13px;
+    transition:
+        color 0.18s ease,
+        background 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.stat-split-tabs--members :deep(.van-tab--card.van-tab--active) {
+    color: #fff;
+    background: linear-gradient(
+        145deg,
+        var(--ledger-accent) 0%,
+        var(--ledger-accent-deep) 100%
+    );
+    box-shadow: 0 8px 18px -14px rgba(var(--ledger-accent-rgb), 0.5);
 }
 
 .stat-split-tabs :deep(.van-tabs__wrap) {
     margin-bottom: 0;
+    overflow: visible;
 }
 
-.stat-split-tabs :deep(.van-tabs__nav--card) {
+.stat-split-tabs--range :deep(.van-tabs__nav--card),
+.stat-split-tabs--flow :deep(.van-tabs__nav--card) {
+    width: 100%;
     margin: 0;
-    border-radius: 12px;
-    border: 1px solid rgba(var(--ledger-accent-rgb), 0.18);
-    background: rgba(255, 254, 251, 0.65);
+    border-radius: 14px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.16);
+    background: rgba(255, 254, 251, 0.72);
+    backdrop-filter: blur(8px);
 }
 
-.stat-split-tabs :deep(.van-tab--card) {
-    border-radius: 10px;
+.stat-split-tabs--range :deep(.van-tab--card),
+.stat-split-tabs--flow :deep(.van-tab--card) {
+    flex: 1 1 0;
+    min-width: 0;
+    border-radius: 11px;
+    padding: 11px 8px;
     color: var(--ledger-ink-muted);
-    font-weight: 600;
-    font-size: 13px;
+    font-weight: 700;
+    font-size: 14px;
+    transition:
+        color 0.18s ease,
+        background 0.18s ease,
+        box-shadow 0.18s ease;
 }
 
-.stat-split-tabs :deep(.van-tab--card.van-tab--active) {
+.stat-split-tabs--range :deep(.van-tab--card.van-tab--active) {
     color: #fff;
-    background: var(--ledger-accent);
+    background: linear-gradient(
+        145deg,
+        var(--ledger-accent) 0%,
+        var(--ledger-accent-deep) 100%
+    );
+    box-shadow: 0 10px 22px -14px rgba(var(--ledger-accent-rgb), 0.55);
+}
+
+.stat-split-tabs--flow :deep(.van-tab--card:nth-child(1).van-tab--active) {
+    color: #fff;
+    background: linear-gradient(
+        145deg,
+        var(--ledger-warm) 0%,
+        #7c2d12 100%
+    );
+    box-shadow: 0 10px 22px -14px rgba(var(--ledger-warm-rgb), 0.55);
+}
+
+.stat-split-tabs--flow :deep(.van-tab--card:nth-child(2).van-tab--active) {
+    color: #fff;
+    background: linear-gradient(
+        145deg,
+        var(--ledger-income) 0%,
+        #14532d 100%
+    );
+    box-shadow: 0 10px 22px -14px rgba(22, 101, 52, 0.42);
 }
 
 .stat-split-pie-wrap {
@@ -1300,29 +1420,14 @@ onUnmounted(() => {
 }
 
 .stat-member-card {
-    margin-top: 18px;
+    margin-top: 0;
     padding: 20px 18px 22px;
     border-radius: 20px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.07);
     background: var(--ledger-paper-elevated);
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.88) inset,
         0 18px 42px -30px var(--ledger-shadow-ink);
-}
-
-.stat-member-card__title {
-    margin: 0 0 4px;
-    font-family: var(--ledger-font-display);
-    font-size: 20px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-}
-
-.stat-member-card__subtitle {
-    margin: 0 0 14px;
-    font-size: 12px;
-    color: var(--ledger-ink-muted);
-    font-weight: 500;
-    line-height: 1.45;
 }
 
 .stat-member-tabs {
@@ -1333,23 +1438,51 @@ onUnmounted(() => {
     margin-bottom: 0;
 }
 
+.stat-member-tabs :deep(.van-tabs__wrap) {
+    overflow: visible;
+}
+
 .stat-member-tabs :deep(.van-tabs__nav--card) {
+    width: 100%;
     margin: 0;
-    border-radius: 12px;
-    border: 1px solid rgba(var(--ledger-accent-rgb), 0.18);
-    background: rgba(255, 254, 251, 0.65);
+    border-radius: 14px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.16);
+    background: rgba(255, 254, 251, 0.72);
+    backdrop-filter: blur(8px);
 }
 
 .stat-member-tabs :deep(.van-tab--card) {
-    border-radius: 10px;
+    flex: 1 1 0;
+    min-width: 0;
+    border-radius: 11px;
+    padding: 11px 8px;
     color: var(--ledger-ink-muted);
-    font-weight: 600;
-    font-size: 13px;
+    font-weight: 700;
+    font-size: 14px;
+    transition:
+        color 0.18s ease,
+        background 0.18s ease,
+        box-shadow 0.18s ease;
 }
 
-.stat-member-tabs :deep(.van-tab--card.van-tab--active) {
+.stat-member-tabs :deep(.van-tab--card:nth-child(1).van-tab--active) {
     color: #fff;
-    background: var(--ledger-accent);
+    background: linear-gradient(
+        145deg,
+        var(--ledger-warm) 0%,
+        #7c2d12 100%
+    );
+    box-shadow: 0 10px 22px -14px rgba(var(--ledger-warm-rgb), 0.55);
+}
+
+.stat-member-tabs :deep(.van-tab--card:nth-child(2).van-tab--active) {
+    color: #fff;
+    background: linear-gradient(
+        145deg,
+        var(--ledger-income) 0%,
+        #14532d 100%
+    );
+    box-shadow: 0 10px 22px -14px rgba(22, 101, 52, 0.42);
 }
 
 .stat-member-pie-wrap {
@@ -1423,29 +1556,14 @@ onUnmounted(() => {
 }
 
 .stat-line-card {
-    margin-top: 18px;
+    margin-top: 0;
     padding: 20px 18px 22px;
     border-radius: 20px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.07);
     background: var(--ledger-paper-elevated);
     box-shadow:
         0 1px 0 rgba(255, 255, 255, 0.88) inset,
         0 18px 42px -30px var(--ledger-shadow-ink);
-}
-
-.stat-line-card__title {
-    margin: 0 0 4px;
-    font-family: var(--ledger-font-display);
-    font-size: 20px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-}
-
-.stat-line-card__subtitle {
-    margin: 0 0 14px;
-    font-size: 12px;
-    color: var(--ledger-ink-muted);
-    font-weight: 500;
-    line-height: 1.45;
 }
 
 .stat-trend-tabs {
@@ -1456,27 +1574,59 @@ onUnmounted(() => {
     margin-bottom: 0;
 }
 
+.stat-trend-tabs :deep(.van-tabs__wrap) {
+    overflow: visible;
+}
+
 .stat-trend-tabs :deep(.van-tabs__nav--card) {
+    width: 100%;
     margin: 0;
-    border-radius: 12px;
-    border: 1px solid rgba(var(--ledger-accent-rgb), 0.18);
-    background: rgba(255, 254, 251, 0.65);
+    border-radius: 14px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.16);
+    background: rgba(255, 254, 251, 0.72);
+    backdrop-filter: blur(8px);
 }
 
 .stat-trend-tabs :deep(.van-tab--card) {
-    border-radius: 10px;
+    flex: 1 1 0;
+    min-width: 0;
+    border-radius: 11px;
+    padding: 11px 8px;
     color: var(--ledger-ink-muted);
-    font-weight: 600;
-    font-size: 13px;
+    font-weight: 700;
+    font-size: 14px;
+    transition:
+        color 0.18s ease,
+        background 0.18s ease,
+        box-shadow 0.18s ease;
 }
 
-.stat-trend-tabs :deep(.van-tab--card.van-tab--active) {
+.stat-trend-tabs :deep(.van-tab--card:nth-child(1).van-tab--active) {
     color: #fff;
-    background: var(--ledger-accent);
+    background: linear-gradient(
+        145deg,
+        var(--ledger-warm) 0%,
+        #7c2d12 100%
+    );
+    box-shadow: 0 10px 22px -14px rgba(var(--ledger-warm-rgb), 0.55);
+}
+
+.stat-trend-tabs :deep(.van-tab--card:nth-child(2).van-tab--active) {
+    color: #fff;
+    background: linear-gradient(
+        145deg,
+        var(--ledger-income) 0%,
+        #14532d 100%
+    );
+    box-shadow: 0 10px 22px -14px rgba(22, 101, 52, 0.42);
 }
 
 .stat-line-svg-wrap {
     width: 100%;
+    padding: 12px 10px 6px;
+    border-radius: 16px;
+    background: rgba(var(--ledger-accent-rgb), 0.045);
+    border: 1px solid rgba(28, 25, 23, 0.06);
 }
 
 .stat-line-svg {
@@ -1525,19 +1675,19 @@ onUnmounted(() => {
     padding: 8px 0 4px;
 }
 
+.stat-pie-card .stat-section__title,
+.stat-split-card .stat-section__title,
+.stat-member-card .stat-section__title,
+.stat-line-card .stat-section__title {
+    font-size: 21px;
+}
+
 .stat-pie-card__title {
-    margin: 0 0 4px;
-    font-family: var(--ledger-font-display);
-    font-size: 20px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
+    margin: 0;
 }
 
 .stat-pie-card__subtitle {
-    margin: 0 0 12px;
-    font-size: 12px;
-    color: var(--ledger-ink-muted);
-    font-weight: 500;
+    margin: 0;
 }
 
 .stat-compose-empty {
