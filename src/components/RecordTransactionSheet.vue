@@ -56,6 +56,12 @@ const moneyFmt = new Intl.NumberFormat("zh-CN", {
     maximumFractionDigits: 2,
 });
 
+/** 高于主「记一笔」弹层，便于次级弹层叠在主弹层之上 */
+const PICK_POPUP_Z_INDEX = 3100;
+
+/** 账户列表来自异步接口；加载完成前打开选择器会无内容且 flex 区域易塌陷 */
+const accountsLoading = ref(false);
+
 const billType = computed<BillType>(() => {
     if (typeTab.value === 0) return "expense";
     if (typeTab.value === 1) return "income";
@@ -110,7 +116,11 @@ const sortedAccountsForPicker = computed(() => {
 
 async function loadContext() {
     const bid = selectedBookId.value?.trim();
-    if (!bid) return;
+    if (!bid) {
+        accountsLoading.value = false;
+        return;
+    }
+    accountsLoading.value = true;
     try {
         const [accList, meta] = await Promise.all([
             ep.tableGetAllItems<Account>(bid, "accounts"),
@@ -143,6 +153,8 @@ async function loadContext() {
         }
     } catch {
         showToast("加载账户或分类失败");
+    } finally {
+        accountsLoading.value = false;
     }
 }
 
@@ -289,6 +301,36 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
     showFromPicker.value = false;
     showToPicker.value = false;
 }
+
+function blurSheetFocus() {
+    if (typeof document === "undefined") {
+        return;
+    }
+    const el = document.activeElement;
+    if (el instanceof HTMLElement) {
+        el.blur();
+    }
+}
+
+function openCategoryPicker() {
+    blurSheetFocus();
+    showCategoryPicker.value = true;
+}
+
+function openAccountPicker() {
+    blurSheetFocus();
+    showAccountPicker.value = true;
+}
+
+function openFromPickerFn() {
+    blurSheetFocus();
+    showFromPicker.value = true;
+}
+
+function openToPickerFn() {
+    blurSheetFocus();
+    showToPicker.value = true;
+}
 </script>
 
 <template>
@@ -347,58 +389,50 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
 
                 <section
                     v-if="billType !== 'transfer'"
-                    class="sheet-card"
+                    class="sheet-card sheet-card--pick"
                     aria-label="分类与账户"
                 >
                     <h3 class="sheet-card__heading">分类与账户</h3>
-                    <van-field
-                        :model-value="categoryLabel"
-                        label="分类"
-                        readonly
-                        is-link
-                        input-align="right"
-                        placeholder="请选择"
-                        class="sheet-field"
-                        @click="showCategoryPicker = true"
-                    />
-                    <van-field
-                        :model-value="accountName(accountId)"
-                        label="账户"
-                        readonly
-                        is-link
-                        input-align="right"
-                        placeholder="请选择"
-                        class="sheet-field"
-                        @click="showAccountPicker = true"
-                    />
+                    <van-cell-group class="sheet-picker-group" :border="false">
+                        <van-cell
+                            title="分类"
+                            :value="categoryLabel"
+                            is-link
+                            class="sheet-picker-cell"
+                            @click.stop="openCategoryPicker"
+                        />
+                        <van-cell
+                            title="账户"
+                            :value="accountName(accountId)"
+                            is-link
+                            class="sheet-picker-cell"
+                            @click.stop="openAccountPicker"
+                        />
+                    </van-cell-group>
                 </section>
 
                 <section
                     v-else
-                    class="sheet-card"
+                    class="sheet-card sheet-card--pick"
                     aria-label="转账方向"
                 >
                     <h3 class="sheet-card__heading">转账方向</h3>
-                    <van-field
-                        :model-value="accountName(transferFromId)"
-                        label="转出"
-                        readonly
-                        is-link
-                        input-align="right"
-                        placeholder="请选择"
-                        class="sheet-field"
-                        @click="showFromPicker = true"
-                    />
-                    <van-field
-                        :model-value="accountName(transferToId)"
-                        label="转入"
-                        readonly
-                        is-link
-                        input-align="right"
-                        placeholder="请选择"
-                        class="sheet-field"
-                        @click="showToPicker = true"
-                    />
+                    <van-cell-group class="sheet-picker-group" :border="false">
+                        <van-cell
+                            title="转出"
+                            :value="accountName(transferFromId)"
+                            is-link
+                            class="sheet-picker-cell"
+                            @click.stop="openFromPickerFn"
+                        />
+                        <van-cell
+                            title="转入"
+                            :value="accountName(transferToId)"
+                            is-link
+                            class="sheet-picker-cell"
+                            @click.stop="openToPickerFn"
+                        />
+                    </van-cell-group>
                 </section>
 
                 <section class="sheet-card sheet-card--note" aria-label="备注">
@@ -436,6 +470,7 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
         round
         safe-area-inset-bottom
         class="sheet-pick-popup"
+        :z-index="PICK_POPUP_Z_INDEX"
     >
         <div class="pick-panel">
             <div class="pick-panel__chrome">
@@ -507,6 +542,7 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
         round
         safe-area-inset-bottom
         class="sheet-pick-popup"
+        :z-index="PICK_POPUP_Z_INDEX"
     >
         <div class="pick-panel">
             <div class="pick-panel__chrome">
@@ -525,8 +561,25 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
                     顺序与「资产」页一致；余额仅供参考
                 </p>
             </div>
-            <div class="sheet-pick-scroll">
-                <div class="sheet-pick-grid" role="listbox" aria-label="账户">
+            <div class="sheet-pick-scroll sheet-pick-scroll--accounts">
+                <p
+                    v-if="accountsLoading"
+                    class="pick-panel__empty pick-panel__empty--muted"
+                >
+                    正在加载账户…
+                </p>
+                <p
+                    v-else-if="sortedAccountsForPicker.length === 0"
+                    class="pick-panel__empty"
+                >
+                    暂无账户，请先到「资产」页添加后再记账。
+                </p>
+                <div
+                    v-else
+                    class="sheet-pick-grid"
+                    role="listbox"
+                    aria-label="账户"
+                >
                     <button
                         v-for="a in sortedAccountsForPicker"
                         :key="a.id"
@@ -565,6 +618,7 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
         round
         safe-area-inset-bottom
         class="sheet-pick-popup"
+        :z-index="PICK_POPUP_Z_INDEX"
     >
         <div class="pick-panel">
             <div class="pick-panel__chrome">
@@ -580,8 +634,25 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
                     </button>
                 </div>
             </div>
-            <div class="sheet-pick-scroll">
-                <div class="sheet-pick-grid" role="listbox" aria-label="转出账户">
+            <div class="sheet-pick-scroll sheet-pick-scroll--accounts">
+                <p
+                    v-if="accountsLoading"
+                    class="pick-panel__empty pick-panel__empty--muted"
+                >
+                    正在加载账户…
+                </p>
+                <p
+                    v-else-if="sortedAccountsForPicker.length === 0"
+                    class="pick-panel__empty"
+                >
+                    暂无账户，请先到「资产」页添加后再记账。
+                </p>
+                <div
+                    v-else
+                    class="sheet-pick-grid"
+                    role="listbox"
+                    aria-label="转出账户"
+                >
                     <button
                         v-for="a in sortedAccountsForPicker"
                         :key="a.id"
@@ -622,6 +693,7 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
         round
         safe-area-inset-bottom
         class="sheet-pick-popup"
+        :z-index="PICK_POPUP_Z_INDEX"
     >
         <div class="pick-panel">
             <div class="pick-panel__chrome">
@@ -637,8 +709,25 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
                     </button>
                 </div>
             </div>
-            <div class="sheet-pick-scroll">
-                <div class="sheet-pick-grid" role="listbox" aria-label="转入账户">
+            <div class="sheet-pick-scroll sheet-pick-scroll--accounts">
+                <p
+                    v-if="accountsLoading"
+                    class="pick-panel__empty pick-panel__empty--muted"
+                >
+                    正在加载账户…
+                </p>
+                <p
+                    v-else-if="sortedAccountsForPicker.length === 0"
+                    class="pick-panel__empty"
+                >
+                    暂无账户，请先到「资产」页添加后再记账。
+                </p>
+                <div
+                    v-else
+                    class="sheet-pick-grid"
+                    role="listbox"
+                    aria-label="转入账户"
+                >
                     <button
                         v-for="a in sortedAccountsForPicker"
                         :key="a.id"
@@ -791,6 +880,13 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
     overflow: visible;
 }
 
+/* 仅用作支出/收入/转账切换，无面板内容；避免空面板占位或盖住下方「账户」行 */
+.sheet__tabs :deep(.van-tabs__content) {
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .sheet__tabs :deep(.van-tabs__nav--card) {
     width: 100%;
     margin: 0;
@@ -920,6 +1016,11 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
     border: 1px solid rgba(var(--ledger-accent-rgb), 0.1);
     background: rgba(255, 254, 251, 0.85);
     overflow: hidden;
+}
+
+/* 分类/账户等多行 Cell：hidden 在部分手机 WebKit 下会裁掉第二行 */
+.sheet-card--pick {
+    overflow: visible;
 }
 
 .sheet-card--note {
@@ -1105,6 +1206,41 @@ function pickAccount(id: string, which: "single" | "from" | "to") {
     font-size: 14px;
     color: var(--ledger-ink-subtle);
     line-height: 1.5;
+}
+
+.pick-panel__empty--muted {
+    color: var(--ledger-ink-faint);
+}
+
+.sheet-picker-group {
+    margin: 0;
+    overflow: visible;
+    border-radius: 0 0 14px 14px;
+}
+
+.sheet-picker-group :deep(.van-cell) {
+    padding: 14px 16px;
+    background: transparent;
+}
+
+.sheet-picker-group :deep(.van-cell__title) {
+    flex: none;
+    width: 3.2em;
+    font-weight: 600;
+    color: var(--ledger-ink-muted);
+}
+
+.sheet-picker-group :deep(.van-cell__value) {
+    font-weight: 600;
+    color: var(--ledger-ink);
+}
+
+.sheet-picker-group :deep(.van-cell__right-icon) {
+    color: var(--ledger-ink-muted);
+}
+
+.sheet-pick-scroll--accounts {
+    min-height: min(42vh, 280px);
 }
 
 .sheet-pick-scroll {
