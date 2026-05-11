@@ -262,9 +262,15 @@ const onSyncClick = async () => {
     --tabbar-ink: var(--ledger-ink-muted);
     --tabbar-paper: rgba(255, 254, 251, 0.97);
     --tabbar-row-h: 52px;
-    /* 底栏背景延伸到屏幕左右沿（安全区外仍用同底色，避免缝） */
+    /*
+     * 底部安全区放在 nav 上并铺同色底，避免仅内层 padding 时 WebKit 在 Home
+     * 条下方仍露出 body 的一条缝。
+     */
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
+    padding-bottom: constant(safe-area-inset-bottom, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--tabbar-paper);
     box-sizing: border-box;
 }
 
@@ -274,8 +280,7 @@ const onSyncClick = async () => {
     align-items: center;
     gap: 0;
     box-sizing: border-box;
-    /* 仅此处预留底部安全区，避免与 #app 重复 */
-    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+    padding: 8px;
     background: var(--tabbar-paper);
     border-top: 1px solid rgba(var(--ledger-accent-rgb), 0.1);
     box-shadow:
