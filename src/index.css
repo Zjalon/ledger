@@ -47,6 +47,8 @@ html {
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	height: 100%;
+	/* 避免与 body 渐变错位时出现默认白底条 */
+	background-color: var(--ledger-paper);
 }
 
 @supports (height: -webkit-fill-available) {
@@ -116,6 +118,28 @@ body {
 @supports (-webkit-touch-callout: none) {
 	#app {
 		min-height: -webkit-fill-available;
+	}
+}
+
+/*
+ * 主屏幕 Web App：仅用 dvh/fill-available 时，部分 iOS 版本根高度会短于
+ * 实际可视区域，fixed 底栏下方会露出 body 渐变（黄）与 html 底色（偏白）。
+ * 用 large viewport 高度兜底铺满。
+ */
+@media (display-mode: standalone) {
+	:root {
+		--ledger-pwa-tabbar-h: calc(68px + env(safe-area-inset-bottom, 0px) + 4px);
+	}
+
+	@supports (height: 100lvh) {
+		html {
+			min-height: 100lvh;
+		}
+
+		body,
+		#app {
+			min-height: 100lvh;
+		}
 	}
 }
 

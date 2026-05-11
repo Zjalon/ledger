@@ -372,4 +372,17 @@ const onSyncClick = async () => {
     font-size: 24px;
     font-weight: 600;
 }
+
+/* 主屏幕 Web App：略加大底栏内边距，与 index.css 中 --ledger-pwa-tabbar-h 的 +4px 对齐 */
+@media (display-mode: standalone) {
+    .app-tabbar,
+    .app-tabbar__surface {
+        --tabbar-paper: rgb(255, 254, 251);
+    }
+
+    .app-tabbar {
+        padding-bottom: calc(constant(safe-area-inset-bottom, 0px) + 4px);
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+    }
+}
 </style>
