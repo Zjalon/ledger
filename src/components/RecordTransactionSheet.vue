@@ -947,10 +947,13 @@ function openToPickerFn() {
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 14px 14px 20px;
+    /* 底部留白：避免备注输入框被固定「保存」按钮与渐变区盖住（需可滚动露出） */
+    padding: 14px 14px
+        calc(28px + 72px + env(safe-area-inset-bottom, 0px));
     display: flex;
     flex-direction: column;
     gap: 14px;
+    scroll-padding-bottom: calc(16px + 72px + env(safe-area-inset-bottom, 0px));
 }
 
 .sheet-amount {
@@ -1020,10 +1023,14 @@ function openToPickerFn() {
 
 /* 分类/账户等多行 Cell：hidden 在部分手机 WebKit 下会裁掉第二行 */
 .sheet-card--pick {
+    position: relative;
+    z-index: 1;
     overflow: visible;
 }
 
 .sheet-card--note {
+    position: relative;
+    z-index: 2;
     border-style: dashed;
     border-color: rgba(28, 25, 23, 0.1);
     background: rgba(255, 254, 251, 0.55);
