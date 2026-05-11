@@ -949,11 +949,11 @@ function openToPickerFn() {
     -webkit-overflow-scrolling: touch;
     /* 底部留白：避免备注输入框被固定「保存」按钮与渐变区盖住（需可滚动露出） */
     padding: 14px 14px
-        calc(20px + 64px + env(safe-area-inset-bottom, 0px));
+        calc(20px + 74px + env(safe-area-inset-bottom, 0px));
     display: flex;
     flex-direction: column;
     gap: 14px;
-    scroll-padding-bottom: calc(12px + 64px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(12px + 74px + env(safe-area-inset-bottom, 0px));
 }
 
 /*
@@ -1086,7 +1086,8 @@ function openToPickerFn() {
 
 .sheet__footer {
     flex-shrink: 0;
-    padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    /* 顶侧略加间距；底侧在浏览器（无安全区）时让保存按钮离视口下沿更远，PWA 仍叠加 safe-area */
+    padding: 14px 16px calc(18px + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(
         180deg,
         transparent 0%,
