@@ -949,11 +949,19 @@ function openToPickerFn() {
     -webkit-overflow-scrolling: touch;
     /* 底部留白：避免备注输入框被固定「保存」按钮与渐变区盖住（需可滚动露出） */
     padding: 14px 14px
-        calc(28px + 72px + env(safe-area-inset-bottom, 0px));
+        calc(20px + 64px + env(safe-area-inset-bottom, 0px));
     display: flex;
     flex-direction: column;
     gap: 14px;
-    scroll-padding-bottom: calc(16px + 72px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(12px + 64px + env(safe-area-inset-bottom, 0px));
+}
+
+/*
+ * PWA / standalone 视口更矮时，flex 子项默认 flex-shrink:1 会把底部「备注」压成 0 高度；
+ * 浏览器宽屏下空间充足不易察觉。禁止主内容块收缩，由 overflow-y 滚动承载超出部分。
+ */
+.sheet__body > * {
+    flex-shrink: 0;
 }
 
 .sheet-amount {
@@ -1030,7 +1038,7 @@ function openToPickerFn() {
 
 .sheet-card--note {
     position: relative;
-    z-index: 2;
+    /* 与 pick 同级即可；备注区不再叠高层级，避免个别 WebView 叠层异常 */
     border-style: dashed;
     border-color: rgba(28, 25, 23, 0.1);
     background: rgba(255, 254, 251, 0.55);
