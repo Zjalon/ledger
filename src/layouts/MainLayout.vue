@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import RecordTransactionSheet from "@/components/RecordTransactionSheet.vue";
 import { useEntryBookSync } from "@/composables/use-entry-book-sync";
+import { usePeriodicBookFullSync } from "@/composables/use-periodic-book-sync";
 import { useSyncStatus } from "@/composables/use-sync-status";
 
 const router = useRouter();
@@ -10,6 +11,7 @@ const route = useRoute();
 const active = ref(0);
 const { entryReady } = useEntryBookSync();
 const { syncing, pending, triggerSync } = useSyncStatus();
+usePeriodicBookFullSync(entryReady);
 
 const showRecordSheet = ref(false);
 

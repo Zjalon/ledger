@@ -215,25 +215,61 @@ export const createTidal = <Item extends BaseItem>({
 
         const { detail, remote, patch, metaInDiff } =
             await fetchStoreDetail(storeFullName);
-        const remoteItems = detail.chunks.flatMap((v) =>
+
+        const detailChunks = Array.isArray(detail.chunks) ? detail.chunks : [];
+        /*
+         * diffStructure 在「每个分片 SHA 都与本地记录的相同」时不会把任何 chunk 放进 diff，
+         * 此时 detail.chunks 为空，但仍可能IndexedDB 流水与远端不一致（与 profile 同类问题）。
+         * 只要远端仍有分片文件，则拉取全部分片正文并 init 全量重建。
+         */
+        const missingAllChunks =
+            remote.chunks.length > 0 && detailChunks.length === 0;
+        let chunkSources = detailChunks;
+        if (missingAllChunks) {
+            chunkSources = (await fetchContent(
+                storeFullName,
+                remote.chunks,
+            )) as typeof detailChunks;
+        }
+
+        const remoteItems = chunkSources.flatMap((v) =>
             chunkContentToActions<Item>(v.content),
         );
-        const normalizedMeta = metaInDiff
+        let normalizedMeta = metaInDiff
             ? normalizeMetaSnapshot(detail.meta?.content)
             : undefined;
-        if (patch) {
+        if (missingAllChunks && normalizedMeta === undefined && remote.meta) {
+            const [metaFile] = await fetchContent(storeFullName, [remote.meta]);
+            normalizedMeta = normalizeMetaSnapshot(metaFile?.content);
+        }
+        if (missingAllChunks) {
+            await itemBucket.init(remoteItems, normalizedMeta);
+        } else if (patch) {
             await itemBucket.patch(remoteItems, normalizedMeta);
         } else {
             await itemBucket.init(remoteItems, normalizedMeta);
         }
         const config = (await itemBucket.configStorage.getValue()) ?? {};
-        const remoteProfileContent = detail.profile?.content;
-        let profileData: Record<string, unknown>;
+        /*
+         * diffStructure 仅在 profile SHA 变化时把 profile 放进 diff；若远端已有新账户但
+         * 本地 structure 里记录的 SHA 已与远端一致（或漏更新），detail.profile 可能为空，
+         * 此时误用旧 config.profileData 会导致界面只剩本机曾写入的数据。
+         * 只要远端存在 profile.json，就在这里再拉一次正文。
+         */
+        let remoteProfileRaw: unknown = detail.profile?.content;
         if (
-            remoteProfileContent !== undefined &&
-            remoteProfileContent !== null
+            (remoteProfileRaw === undefined || remoteProfileRaw === null) &&
+            remote.profile
         ) {
-            const normRemote = normalizeProfileSnapshot(remoteProfileContent);
+            const [profFile] = await fetchContent(storeFullName, [
+                remote.profile,
+            ]);
+            remoteProfileRaw = profFile?.content;
+        }
+
+        let profileData: Record<string, unknown>;
+        if (remoteProfileRaw !== undefined && remoteProfileRaw !== null) {
+            const normRemote = normalizeProfileSnapshot(remoteProfileRaw);
             if (await itemBucket.isProfileDirty()) {
                 const localSnap = normalizeProfileSnapshot(
                     (await itemBucket.getProfile()) ?? {},
