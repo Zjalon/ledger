@@ -1,0 +1,7 @@
+/**
+ * 在 Vant 全量样式之后加载，用 Cent 主题覆盖默认蓝色主色。
+ */
+:root {
+	--van-primary-color: var(--cent-accent);
+	--van-success-color: var(--cent-accent);
+}
