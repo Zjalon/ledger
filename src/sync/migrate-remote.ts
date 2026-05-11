@@ -63,6 +63,73 @@ export function normalizeProfileSnapshot(
     return o;
 }
 
+function profileUserMap(raw: unknown): Record<string, unknown> {
+    const u = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+    return { ...(u as Record<string, unknown>) };
+}
+
+function accountUpdateAt(row: unknown): number {
+    if (row === null || typeof row !== "object" || Array.isArray(row)) {
+        return 0;
+    }
+    const t = (row as { __update_at?: unknown }).__update_at;
+    return typeof t === "number" ? t : 0;
+}
+
+/**
+ * 合并远端与本地 profile.json（users 按 id 并集，accounts 按 id 并集，同 id 取较新 __update_at）。
+ * 用于同步上传与 init 拉取：避免 mergeMeta 在无 $$patch 时用整份 local 覆盖远端导致协作者数据丢失。
+ */
+export function mergeProfileForSync(
+    remoteRaw: unknown,
+    localRaw: unknown,
+): Record<string, unknown> {
+    const remote = normalizeProfileSnapshot(remoteRaw);
+    const local = normalizeProfileSnapshot(localRaw);
+    const ru = profileUserMap(remote[PROFILE_USERS_KEY]);
+    const lu = profileUserMap(local[PROFILE_USERS_KEY]);
+    const mergedUsers: Record<string, unknown> = { ...ru, ...lu };
+
+    const ra = remote[PROFILE_ACCOUNTS_KEY];
+    const la = local[PROFILE_ACCOUNTS_KEY];
+    const accR = Array.isArray(ra) ? ra : [];
+    const accL = Array.isArray(la) ? la : [];
+    const byId = new Map<string, unknown>();
+    for (const row of accR) {
+        if (row !== null && typeof row === "object" && !Array.isArray(row)) {
+            const id = (row as { id?: unknown }).id;
+            if (id !== undefined && id !== null) {
+                byId.set(String(id), row);
+            }
+        }
+    }
+    for (const row of accL) {
+        if (row !== null && typeof row === "object" && !Array.isArray(row)) {
+            const id = (row as { id?: unknown }).id;
+            if (id === undefined || id === null) {
+                continue;
+            }
+            const key = String(id);
+            const prev = byId.get(key);
+            if (!prev) {
+                byId.set(key, row);
+            } else {
+                byId.set(
+                    key,
+                    accountUpdateAt(row) >= accountUpdateAt(prev) ? row : prev,
+                );
+            }
+        }
+    }
+
+    return normalizeProfileSnapshot({
+        ...remote,
+        ...local,
+        [PROFILE_USERS_KEY]: mergedUsers,
+        [PROFILE_ACCOUNTS_KEY]: Array.from(byId.values()),
+    });
+}
+
 /** 与账单上的 BillType（income/expense/…）区分，只认 stash 三种操作 */
 function isFullActionShape(v: unknown): boolean {
     if (v === null || typeof v !== "object" || !("type" in v)) {

@@ -12,6 +12,7 @@ import {
 } from "@/database/stash";
 import {
     chunkContentToActions,
+    mergeProfileForSync,
     normalizeMetaSnapshot,
     normalizeProfileSnapshot,
 } from "@/sync/migrate-remote";
@@ -226,12 +227,28 @@ export const createTidal = <Item extends BaseItem>({
             await itemBucket.init(remoteItems, normalizedMeta);
         }
         const config = (await itemBucket.configStorage.getValue()) ?? {};
+        const remoteProfileContent = detail.profile?.content;
+        let profileData: Record<string, unknown>;
+        if (
+            remoteProfileContent !== undefined &&
+            remoteProfileContent !== null
+        ) {
+            const normRemote = normalizeProfileSnapshot(remoteProfileContent);
+            if (await itemBucket.isProfileDirty()) {
+                const localSnap = normalizeProfileSnapshot(
+                    (await itemBucket.getProfile()) ?? {},
+                );
+                profileData = mergeProfileForSync(normRemote, localSnap);
+            } else {
+                profileData = normRemote;
+            }
+        } else {
+            profileData = normalizeProfileSnapshot(config.profileData ?? {});
+        }
         await itemBucket.configStorage.setValue({
             ...config,
             structure: remote,
-            profileData: normalizeProfileSnapshot(
-                detail.profile?.content ?? config.profileData ?? {},
-            ),
+            profileData,
         });
         notifyChange(storeFullName);
     };
@@ -421,8 +438,11 @@ export const createTidal = <Item extends BaseItem>({
                                   )[0]?.content
                                 : undefined;
                             const merged = remoteProfile
-                                ? mergeMeta(remoteProfile, localProfile)
-                                : localProfile;
+                                ? mergeProfileForSync(
+                                      remoteProfile,
+                                      localProfile,
+                                  )
+                                : normalizeProfileSnapshot(localProfile);
                             profileFiles.push({
                                 path: "profile.json",
                                 content: merged,
