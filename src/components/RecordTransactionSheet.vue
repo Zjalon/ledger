@@ -264,61 +264,32 @@ async function submit() {
 
     const amount = numberToAmount(raw);
 
+    const orig = props.editingTx;
+    const base: Omit<Transaction, "accountId" | "transferTo"> = {
+        id: orig?.id ?? uuidv4(),
+        type: billType.value,
+        categoryId:
+            billType.value === "transfer"
+                ? TransferPresetCategory.id
+                : categoryId.value,
+        creatorId: orig?.creatorId ?? token,
+        comment: comment.value.trim() || undefined,
+        amount,
+        time: orig?.time ?? Date.now(),
+    };
+
     let row: Transaction;
-    if (isEditMode.value && props.editingTx) {
-        // Edit mode: preserve id, creatorId, time from original
-        const orig = props.editingTx;
-        const base: Omit<Transaction, "accountId" | "transferTo"> = {
-            id: orig.id,
-            type: billType.value,
-            categoryId:
-                billType.value === "transfer"
-                    ? TransferPresetCategory.id
-                    : categoryId.value,
-            creatorId: orig.creatorId,
-            comment: comment.value.trim() || undefined,
-            amount,
-            time: orig.time,
+    if (billType.value === "transfer") {
+        row = {
+            ...base,
+            accountId: transferFromId.value,
+            transferTo: transferToId.value,
         };
-        if (billType.value === "transfer") {
-            row = {
-                ...base,
-                accountId: transferFromId.value,
-                transferTo: transferToId.value,
-            };
-        } else {
-            row = {
-                ...base,
-                accountId: accountId.value,
-            };
-        }
     } else {
-        // Create mode
-        const txId = uuidv4();
-        const base: Omit<Transaction, "accountId" | "transferTo"> = {
-            id: txId,
-            type: billType.value,
-            categoryId:
-                billType.value === "transfer"
-                    ? TransferPresetCategory.id
-                    : categoryId.value,
-            creatorId: token,
-            comment: comment.value.trim() || undefined,
-            amount,
-            time: Date.now(),
+        row = {
+            ...base,
+            accountId: accountId.value,
         };
-        if (billType.value === "transfer") {
-            row = {
-                ...base,
-                accountId: transferFromId.value,
-                transferTo: transferToId.value,
-            };
-        } else {
-            row = {
-                ...base,
-                accountId: accountId.value,
-            };
-        }
     }
 
     try {
