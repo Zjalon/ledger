@@ -40,6 +40,28 @@ const fmt = new Intl.NumberFormat("zh-CN", {
 });
 
 const showFilterSheet = ref(false);
+const showCalendar = ref(false);
+const calendarValue = ref<[number, number] | null>(null);
+
+function onCalendarConfirm({ selectedDates }: { selectedDates: Date[] }) {
+    if (selectedDates.length >= 2) {
+        const start = selectedDates[0].valueOf();
+        const end = selectedDates[1].valueOf() + 24 * 60 * 60 * 1000;
+        calendarValue.value = [start, end];
+        txFilter.filters.value.dateStart = start;
+        txFilter.filters.value.dateEnd = end;
+    }
+    showCalendar.value = false;
+}
+
+function dateRangeLabel(): string {
+    const f = txFilter.filters.value;
+    if (f.dateStart === null || f.dateEnd === null) return "";
+    const start = dayjs(f.dateStart);
+    const end = dayjs(f.dateEnd - 24 * 60 * 60 * 1000);
+    if (start.isSame(end, "day")) return start.format("M月D日");
+    return `${start.format("M月D日")} – ${end.format("M月D日")}`;
+}
 
 const todayStart = computed(() => {
     const now = new Date();
@@ -336,9 +358,33 @@ onUnmounted(() => {
             <div class="filter-panel">
                 <div class="filter-panel__head">
                     <h2 class="filter-panel__title">筛选流水</h2>
-                    <button type="button" class="filter-panel__reset" @click="txFilter.resetFilters()">重置</button>
+                    <button type="button" class="filter-panel__reset" @click="txFilter.resetFilters(); calendarValue = null">重置</button>
                 </div>
                 <div class="filter-panel__body">
+                    <div class="filter-field">
+                        <label class="filter-field__label">日期范围</label>
+                        <div class="filter-field__row">
+                            <button type="button" class="filter-field__input filter-field__date-btn" @click="showCalendar = true">
+                                {{ dateRangeLabel() || '点击选择日期范围' }}
+                            </button>
+                            <button v-if="txFilter.filters.value.dateStart !== null" type="button" class="filter-field__clear" @click="txFilter.filters.value.dateStart = null; txFilter.filters.value.dateEnd = null; calendarValue = null">清除</button>
+                        </div>
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-field__label">成员</label>
+                        <div class="filter-chips">
+                            <button
+                                v-for="u in usersList"
+                                :key="u.id"
+                                type="button"
+                                class="filter-chip"
+                                :class="{ 'filter-chip--active': txFilter.filters.value.creatorIds.includes(String(u.id)) }"
+                                @click="txFilter.filters.value.creatorIds.includes(String(u.id)) ? (txFilter.filters.value.creatorIds = txFilter.filters.value.creatorIds.filter((x) => x !== String(u.id))) : txFilter.filters.value.creatorIds.push(String(u.id))"
+                            >
+                                {{ u.nickname || '成员' }}
+                            </button>
+                        </div>
+                    </div>
                     <div class="filter-field">
                         <label class="filter-field__label">关键词</label>
                         <input v-model="txFilter.filters.value.keyword" type="text" class="filter-field__input" placeholder="搜索备注…" autocomplete="off" />
@@ -374,6 +420,12 @@ onUnmounted(() => {
                 </div>
             </div>
         </van-popup>
+
+        <van-calendar
+            v-model:show="showCalendar"
+            type="range"
+            @confirm="onCalendarConfirm"
+        />
     </div>
 </template>
 
@@ -798,6 +850,20 @@ onUnmounted(() => {
 .filter-field__sep {
     color: var(--ledger-ink-faint);
     font-weight: 600;
+}
+.filter-field__date-btn {
+    text-align: left;
+    cursor: pointer;
+}
+.filter-field__clear {
+    border: none;
+    background: transparent;
+    color: var(--ledger-ink-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0 8px;
 }
 .filter-chips {
     display: flex;
