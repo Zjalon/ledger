@@ -740,6 +740,7 @@ onUnmounted(() => {
 .stat-line-svg-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    min-height: 140px;
 }
 
 .stat-line-svg {
@@ -787,10 +788,6 @@ onUnmounted(() => {
 
 .stat-trend-empty {
     padding: 24px 0;
-    min-height: 160px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
 }
 
 /* Category ranking card */
@@ -821,6 +818,7 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     gap: 14px;
+    min-height: 140px;
 }
 
 .stat-rank-item {
@@ -877,9 +875,5 @@ onUnmounted(() => {
 
 .stat-rank-empty {
     padding: 24px 0;
-    min-height: 200px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
 }
 </style>
