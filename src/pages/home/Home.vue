@@ -11,6 +11,7 @@ import { buildCategoryLabelMap } from "@/composables/use-ledger-meta";
 import { useSync } from "@/composables/use-sync";
 import { useTxFilter } from "@/composables/use-tx-filter";
 import type { Full } from "@/database/stash";
+import type { Account } from "@/database/tables/account";
 import type { Transaction } from "@/database/tables/transaction";
 import type { User } from "@/database/tables/user";
 import { amountToNumber } from "@/ledger/bill";
@@ -23,6 +24,7 @@ const startEdit = inject<(tx: Full<Transaction>) => void>("startEdit");
 const bills = ref<Full<Transaction>[]>([]);
 const usersList = ref<User[]>([]);
 const metaCategories = ref<BillCategory[]>([]);
+const accountsList = ref<Full<Account>[]>([]);
 
 let unsubscribe: (() => void) | undefined;
 
@@ -101,6 +103,10 @@ function creatorLabel(tx: Full<Transaction>): string {
     return creatorLabelFromKey(String(tx.creatorId));
 }
 
+function accountName(accountId: string): string {
+    return accountsList.value.find((a) => a.id === accountId)?.name ?? "";
+}
+
 function timeLabel(ts: number): string {
     return dayjs(ts).format("HH:mm");
 }
@@ -167,16 +173,18 @@ async function confirmDeleteTransaction(tx: Full<Transaction>) {
 }
 
 async function refreshData(bookId: string) {
-    const [txs, users, meta] = await Promise.all([
+    const [txs, users, meta, accs] = await Promise.all([
         ep.tableGetAllItems<Transaction>(bookId, "transactions"),
         ep.tableGetAllItems<User>(bookId, "users"),
         ep.getLedgerMeta(bookId),
+        ep.tableGetAllItems<Full<Account>>(bookId, "accounts"),
     ]);
     bills.value = txs;
     usersList.value = users;
     metaCategories.value = Array.isArray(meta.categories)
         ? (meta.categories as BillCategory[])
         : [];
+    accountsList.value = accs;
 }
 
 onMounted(async () => {
@@ -278,6 +286,14 @@ onUnmounted(() => {
                                         <p class="journal-row__what">
                                             {{ purposeLine(tx) }}
                                         </p>
+                                        <div v-if="tx.type !== 'transfer' && tx.accountId" class="journal-row__account">
+                                            <span class="journal-row__account-tag">{{ accountName(tx.accountId) }}</span>
+                                        </div>
+                                        <div v-else-if="tx.type === 'transfer' && (tx.accountId || tx.transferTo)" class="journal-row__account">
+                                            <span v-if="tx.accountId" class="journal-row__account-tag">{{ accountName(tx.accountId) }}</span>
+                                            <span v-if="tx.accountId && tx.transferTo" class="journal-row__account-arrow">→</span>
+                                            <span v-if="tx.transferTo" class="journal-row__account-tag">{{ accountName(tx.transferTo) }}</span>
+                                        </div>
                                         <p class="journal-row__money">
                                             {{ amountLabel(tx) }}
                                         </p>
@@ -615,6 +631,27 @@ onUnmounted(() => {
     font-weight: 500;
     line-height: 1.45;
     color: var(--journal-muted);
+}
+
+.journal-row__account {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.journal-row__account-tag {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--journal-muted);
+    background: rgba(87, 83, 78, 0.07);
+    padding: 2px 7px;
+    border-radius: 6px;
+}
+
+.journal-row__account-arrow {
+    font-size: 11px;
+    color: var(--ledger-ink-faint);
 }
 
 .journal-row__money {
