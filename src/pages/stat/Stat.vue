@@ -14,77 +14,49 @@ import type { BillCategory } from "@/ledger/type";
 dayjs.extend(isoWeek);
 
 type RangeKind = "week" | "month" | "year";
-
-type TrendKind = "income" | "expense";
+type FlowKind = "income" | "expense";
 
 const { selectedBookId, ep } = useSync();
 
 const bills = ref<Full<Transaction>[]>([]);
 const usersList = ref<Full<User>[]>([]);
 const metaCategories = ref<BillCategory[]>([]);
+
+/** Global time selector */
 const rangeKind = ref<RangeKind>("month");
-/** 分类 / 成员 饼图的时间范围（独立于收支构成） */
-const splitPieRange = ref<RangeKind>("month");
-/** 支出 / 收入（饼图始终按分类，本组决定流水类型） */
-const splitPieFlowKind = ref<TrendKind>("expense");
-/** 全部 或 某位成员（按创建者筛选后再按分类聚合） */
-const splitPieCreatorKey = ref<string>("all");
-/** 本月折线图：收入 / 支出 */
-const trendKind = ref<TrendKind>("expense");
-/** 本月按成员饼图：收入 / 支出 */
-const memberPieKind = ref<TrendKind>("expense");
 
-const trendFillColor = computed(() =>
-    trendKind.value === "expense" ? "#9a3412" : "#166534",
-);
+/** Trend chart: expense / income toggle */
+const trendKind = ref<FlowKind>("expense");
 
-let unsubscribe: (() => void) | undefined;
+/** Category ranking: expense / income toggle */
+const rankKind = ref<FlowKind>("expense");
 
-const fmt = new Intl.NumberFormat("zh-CN", {
-    style: "currency",
-    currency: "CNY",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-});
+/** Category ranking: member filter (all or specific creator ID) */
+const rankCreatorKey = ref<string>("all");
 
 function rangeBounds(kind: RangeKind): { start: number; end: number } {
     const now = dayjs();
     if (kind === "week") {
         return {
             start: now.startOf("isoWeek").valueOf(),
-            end: now.endOf("isoWeek").valueOf(),
+            end: now.endOf("day").valueOf(),
         };
     }
     if (kind === "month") {
         return {
             start: now.startOf("month").valueOf(),
-            end: now.endOf("month").valueOf(),
+            end: now.endOf("day").valueOf(),
         };
     }
     return {
         start: now.startOf("year").valueOf(),
-        end: now.endOf("year").valueOf(),
+        end: now.endOf("day").valueOf(),
     };
 }
 
-const periodLabel = computed(() => {
-    const { start, end } = rangeBounds(rangeKind.value);
-    const a = dayjs(start);
-    const b = dayjs(end);
-    if (rangeKind.value === "week") {
-        return `${a.format("M月D日")} – ${b.format("M月D日")}`;
-    }
-    if (rangeKind.value === "month") {
-        return a.format("YYYY年M月");
-    }
-    return a.format("YYYY年");
-});
-
 const rowsInRange = computed(() => {
     const { start, end } = rangeBounds(rangeKind.value);
-    return bills.value
-        .filter((b) => b.time >= start && b.time <= end)
-        .sort((a, b) => b.time - a.time);
+    return bills.value.filter((b) => b.time >= start && b.time <= end);
 });
 
 const expenseRaw = computed(() =>
@@ -99,441 +71,103 @@ const incomeRaw = computed(() =>
         .reduce((s, b) => s + b.amount, 0),
 );
 
+const netRaw = computed(() => incomeRaw.value - expenseRaw.value);
+
+const fmt = new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency: "CNY",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
+
 const expenseLabel = computed(() =>
     fmt.format(amountToNumber(expenseRaw.value)),
 );
 
 const incomeLabel = computed(() => fmt.format(amountToNumber(incomeRaw.value)));
 
-const pieTotal = computed(() => expenseRaw.value + incomeRaw.value);
-
-const expenseShare = computed(() => {
-    const t = pieTotal.value;
-    if (t <= 0) {
-        return 0;
-    }
-    return expenseRaw.value / t;
-});
-
-/** 饼图扇区路径：从 12 点顺时针，expense 再 income */
-const piePaths = computed(() => {
-    const t = pieTotal.value;
-    if (t <= 0) {
-        return null;
-    }
-    const cx = 50;
-    const cy = 50;
-    const r = 42;
-    const ex = expenseShare.value;
-    if (ex <= 0) {
-        return {
-            expense: "",
-            income: fullCircle(cx, cy, r),
-        };
-    }
-    if (ex >= 1) {
-        return {
-            expense: fullCircle(cx, cy, r),
-            income: "",
-        };
-    }
-    const angle0 = -Math.PI / 2;
-    const split = angle0 + ex * 2 * Math.PI;
-    const expense = sectorPath(cx, cy, r, angle0, split);
-    const income = sectorPath(cx, cy, r, split, angle0 + 2 * Math.PI);
-    return { expense, income };
-});
-
-function polar(cx: number, cy: number, r: number, angle: number) {
-    return {
-        x: cx + r * Math.cos(angle),
-        y: cy + r * Math.sin(angle),
-    };
-}
-
-function sectorPath(cx: number, cy: number, r: number, a0: number, a1: number) {
-    const large = a1 - a0 > Math.PI ? 1 : 0;
-    const p0 = polar(cx, cy, r, a0);
-    const p1 = polar(cx, cy, r, a1);
-    return `M ${cx} ${cy} L ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} 1 ${p1.x} ${p1.y} Z`;
-}
-
-function fullCircle(cx: number, cy: number, r: number) {
-    return `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx} ${cy + r} A ${r} ${r} 0 1 1 ${cx} ${cy - r} Z`;
-}
-
-/** 成员饼图：固定高对比色 + 超出后按黄金角铺色相 */
-const MEMBER_PIE_COLORS_EXPENSE = [
-    "#dc2626",
-    "#ea580c",
-    "#ca8a04",
-    "#c2410c",
-    "#e11d48",
-    "#be185d",
-    "#9333ea",
-    "#b45309",
-    "#991b1b",
-    "#a16207",
-    "#c026d3",
-    "#7c2d12",
-] as const;
-
-const MEMBER_PIE_COLORS_INCOME = [
-    "#14532d",
-    "#0f766e",
-    "#0369a1",
-    "#047857",
-    "#4d7c0f",
-    "#0e7490",
-    "#1d4ed8",
-    "#15803d",
-    "#0d9488",
-    "#166534",
-    "#1e40af",
-    "#65a30d",
-] as const;
-
-function memberSliceColor(index: number, kind: TrendKind): string {
-    const pal =
-        kind === "expense"
-            ? MEMBER_PIE_COLORS_EXPENSE
-            : MEMBER_PIE_COLORS_INCOME;
-    if (index < pal.length) {
-        return pal[index];
-    }
-    const phase = kind === "expense" ? 12 : 118;
-    const hue = (phase + index * 137.508) % 360;
-    const sat = kind === "expense" ? "72%" : "62%";
-    const light = kind === "expense" ? "44%" : "38%";
-    return `hsl(${hue} ${sat} ${light})`;
-}
-
-const hasFlowInRange = computed(
-    () => rowsInRange.value.length > 0 && pieTotal.value > 0,
-);
-
-const netRaw = computed(() => incomeRaw.value - expenseRaw.value);
-
 const netLabel = computed(() => {
     const n = amountToNumber(netRaw.value);
-    const abs = fmt.format(Math.abs(n));
-    if (netRaw.value > 0) {
-        return `结余 +${abs}`;
-    }
-    if (netRaw.value < 0) {
-        return `结余 −${abs}`;
-    }
-    return "收支相抵";
+    return fmt.format(Math.abs(n));
 });
+
+const trendSeries = computed(() => {
+    const { start, end } = rangeBounds(rangeKind.value);
+    const kind = trendKind.value;
+    const startDay = dayjs(start);
+    const endDay = dayjs(end);
+
+    if (rangeKind.value === "year") {
+        const months: { label: string; amount: number }[] = [];
+        let cursor = startDay.startOf("month");
+        const endMonth = endDay.endOf("month");
+        while (cursor.isBefore(endMonth) || cursor.isSame(endMonth, "month")) {
+            const mStart = cursor.startOf("month").valueOf();
+            const mEnd = cursor.endOf("month").valueOf();
+            const amount = bills.value
+                .filter(
+                    (b) =>
+                        b.type === kind && b.time >= mStart && b.time <= mEnd,
+                )
+                .reduce((s, b) => s + b.amount, 0);
+            months.push({
+                label: `${cursor.month() + 1}月`,
+                amount,
+            });
+            cursor = cursor.add(1, "month");
+        }
+        return months;
+    }
+
+    const days: { label: string; amount: number }[] = [];
+    let cursor = startDay.startOf("day");
+    while (cursor.isBefore(endDay) || cursor.isSame(endDay, "day")) {
+        const dStart = cursor.startOf("day").valueOf();
+        const dEnd = cursor.endOf("day").valueOf();
+        const amount = bills.value
+            .filter(
+                (b) => b.type === kind && b.time >= dStart && b.time <= dEnd,
+            )
+            .reduce((s, b) => s + b.amount, 0);
+
+        let label: string;
+        if (rangeKind.value === "week") {
+            const dayNames = [
+                "周一",
+                "周二",
+                "周三",
+                "周四",
+                "周五",
+                "周六",
+                "周日",
+            ];
+            label = dayNames[cursor.isoWeekday() - 1];
+        } else {
+            label = `${cursor.date()}`;
+        }
+        days.push({ label, amount });
+        cursor = cursor.add(1, "day");
+    }
+    return days;
+});
+
+const trendTotalLabel = computed(() => {
+    const raw = trendSeries.value.reduce((s, x) => s + x.amount, 0);
+    return fmt.format(amountToNumber(raw));
+});
+
+const trendHasAny = computed(() => trendSeries.value.some((x) => x.amount > 0));
+
+const trendFillColor = computed(() =>
+    trendKind.value === "expense" ? "#9a3412" : "#166534",
+);
 
 const fmtAxis = new Intl.NumberFormat("zh-CN", {
     maximumFractionDigits: 0,
 });
 
-const trendMonthLabel = computed(() => dayjs().format("YYYY年M月"));
-
-const categoryLabelMap = computed(() =>
-    buildCategoryLabelMap(metaCategories.value),
-);
-
-function memberCreatorLabel(creatorKey: string): string {
-    const u = usersList.value.find((x) => String(x.id) === creatorKey);
-    const nick = u?.nickname?.trim();
-    if (nick) {
-        return nick;
-    }
-    if (creatorKey.length > 10) {
-        return `成员 …${creatorKey.slice(-4)}`;
-    }
-    return "成员";
-}
-
-/** 第三组：全部 + 账本成员 + 流水里出现但不在成员表中的创建者 */
-const splitPieMemberTabList = computed(() => {
-    const tabs: { key: string; title: string }[] = [
-        { key: "all", title: "全部" },
-    ];
-    const seen = new Set<string>(["all"]);
-    for (const u of usersList.value) {
-        const k = String(u.id);
-        if (seen.has(k)) {
-            continue;
-        }
-        seen.add(k);
-        const nick = u.nickname?.trim();
-        const title =
-            nick && nick.length > 0
-                ? nick
-                : k.length > 10
-                  ? `成员 …${k.slice(-4)}`
-                  : "成员";
-        tabs.push({ key: k, title });
-    }
-    for (const b of bills.value) {
-        const k = String(b.creatorId);
-        if (seen.has(k)) {
-            continue;
-        }
-        seen.add(k);
-        tabs.push({ key: k, title: memberCreatorLabel(k) });
-    }
-    return tabs;
-});
-
-watch(splitPieMemberTabList, (tabs) => {
-    const key = splitPieCreatorKey.value;
-    if (key === "all") {
-        return;
-    }
-    if (!tabs.some((t) => t.key === key)) {
-        splitPieCreatorKey.value = "all";
-    }
-});
-
-const splitPiePeriodLabel = computed(() => {
-    const rk = splitPieRange.value;
-    const { start, end } = rangeBounds(rk);
-    const a = dayjs(start);
-    const b = dayjs(end);
-    if (rk === "week") {
-        return `${a.format("M月D日")} – ${b.format("M月D日")}`;
-    }
-    if (rk === "month") {
-        return a.format("YYYY年M月");
-    }
-    return a.format("YYYY年");
-});
-
-const splitPieDimHint = computed(() => {
-    const flow =
-        splitPieFlowKind.value === "expense" ? "按支出分类" : "按收入分类";
-    const member =
-        splitPieCreatorKey.value === "all"
-            ? "全部成员"
-            : (splitPieMemberTabList.value.find(
-                  (t) => t.key === splitPieCreatorKey.value,
-              )?.title ?? "指定成员");
-    return `${flow} · ${member} · 不含转账`;
-});
-
-type SplitPieSlice = {
-    sliceKey: string;
-    label: string;
-    amount: number;
-    share: number;
-    pathD: string;
-    fill: string;
-};
-
-const splitPie = computed(() => {
-    const flow = splitPieFlowKind.value;
-    const creator = splitPieCreatorKey.value;
-    const { start, end } = rangeBounds(splitPieRange.value);
-    const map = new Map<string, number>();
-    const labels = new Map<string, string>();
-
-    for (const b of bills.value) {
-        if (b.time < start || b.time > end) {
-            continue;
-        }
-        if (b.type !== flow) {
-            continue;
-        }
-        if (creator !== "all" && String(b.creatorId) !== creator) {
-            continue;
-        }
-        const id = b.categoryId;
-        map.set(id, (map.get(id) ?? 0) + b.amount);
-        if (!labels.has(id)) {
-            const name = categoryLabelMap.value.get(id)?.trim();
-            labels.set(id, name && name.length > 0 ? name : "未命名分类");
-        }
-    }
-
-    const rows = [...map.entries()]
-        .map(([key, amount]) => ({
-            sliceKey: key,
-            label: labels.get(key) ?? key,
-            amount,
-        }))
-        .filter((x) => x.amount > 0)
-        .sort((a, b) => b.amount - a.amount);
-
-    const total = rows.reduce((s, x) => s + x.amount, 0);
-    if (total <= 0 || rows.length === 0) {
-        return null;
-    }
-    const cx = 50;
-    const cy = 50;
-    const r = 42;
-    if (rows.length === 1) {
-        const [only] = rows;
-        return {
-            total,
-            slices: [
-                {
-                    sliceKey: only.sliceKey,
-                    label: only.label,
-                    amount: only.amount,
-                    share: 1,
-                    pathD: fullCircle(cx, cy, r),
-                    fill: memberSliceColor(0, flow),
-                } satisfies SplitPieSlice,
-            ],
-        };
-    }
-    let angle = -Math.PI / 2;
-    const slices: SplitPieSlice[] = rows.map((row, i) => {
-        const frac = row.amount / total;
-        const next = angle + frac * 2 * Math.PI;
-        const pathD = sectorPath(cx, cy, r, angle, next);
-        angle = next;
-        return {
-            sliceKey: row.sliceKey,
-            label: row.label,
-            amount: row.amount,
-            share: row.amount / total,
-            pathD,
-            fill: memberSliceColor(i, flow),
-        };
-    });
-    return { total, slices };
-});
-
-const splitPieTotalLabel = computed(() => {
-    const p = splitPie.value;
-    if (!p) {
-        return "—";
-    }
-    return fmt.format(amountToNumber(p.total));
-});
-
-type MemberMonthSlice = {
-    creatorKey: string;
-    label: string;
-    amount: number;
-    share: number;
-    pathD: string;
-    fill: string;
-};
-
-const memberMonthPie = computed(() => {
-    const kind = memberPieKind.value;
-    const { start, end } = currentMonthBounds();
-    const map = new Map<string, number>();
-    for (const b of bills.value) {
-        if (b.type !== kind) {
-            continue;
-        }
-        if (b.time < start || b.time > end) {
-            continue;
-        }
-        const k = String(b.creatorId);
-        map.set(k, (map.get(k) ?? 0) + b.amount);
-    }
-    const rows = [...map.entries()]
-        .map(([creatorKey, amount]) => ({
-            creatorKey,
-            label: memberCreatorLabel(creatorKey),
-            amount,
-        }))
-        .filter((x) => x.amount > 0)
-        .sort((a, b) => b.amount - a.amount);
-    const total = rows.reduce((s, x) => s + x.amount, 0);
-    if (total <= 0 || rows.length === 0) {
-        return null;
-    }
-    const cx = 50;
-    const cy = 50;
-    const r = 42;
-    if (rows.length === 1) {
-        const [only] = rows;
-        return {
-            total,
-            slices: [
-                {
-                    creatorKey: only.creatorKey,
-                    label: only.label,
-                    amount: only.amount,
-                    share: 1,
-                    pathD: fullCircle(cx, cy, r),
-                    fill: memberSliceColor(0, kind),
-                } satisfies MemberMonthSlice,
-            ],
-        };
-    }
-    let angle = -Math.PI / 2;
-    const slices: MemberMonthSlice[] = rows.map((row, i) => {
-        const frac = row.amount / total;
-        const next = angle + frac * 2 * Math.PI;
-        const pathD = sectorPath(cx, cy, r, angle, next);
-        angle = next;
-        return {
-            creatorKey: row.creatorKey,
-            label: row.label,
-            amount: row.amount,
-            share: row.amount / total,
-            pathD,
-            fill: memberSliceColor(i, kind),
-        };
-    });
-    return { total, slices };
-});
-
-const memberMonthTotalLabel = computed(() => {
-    const pie = memberMonthPie.value;
-    if (!pie) {
-        return "—";
-    }
-    return fmt.format(amountToNumber(pie.total));
-});
-
-/** 当前自然月 [start, end] 时间戳 */
-function currentMonthBounds(): { start: number; end: number } {
-    const m = dayjs().startOf("month");
-    return {
-        start: m.valueOf(),
-        end: m.endOf("month").valueOf(),
-    };
-}
-
-const dailyTrendSeries = computed(() => {
-    const { start, end } = currentMonthBounds();
-    const monthStart = dayjs(start);
-    const days = monthStart.daysInMonth();
-    const sums = new Array<number>(days).fill(0);
-    const t = trendKind.value;
-
-    for (const b of bills.value) {
-        if (b.type !== t) {
-            continue;
-        }
-        if (b.time < start || b.time > end) {
-            continue;
-        }
-        const di = dayjs(b.time).date() - 1;
-        if (di >= 0 && di < days) {
-            sums[di] += b.amount;
-        }
-    }
-
-    return sums.map((amount, i) => ({
-        day: i + 1,
-        amount,
-    }));
-});
-
-const trendMonthTotalLabel = computed(() => {
-    const raw = dailyTrendSeries.value.reduce((s, x) => s + x.amount, 0);
-    return fmt.format(amountToNumber(raw));
-});
-
-const trendHasAny = computed(() =>
-    dailyTrendSeries.value.some((x) => x.amount > 0),
-);
-
 const trendChart = computed(() => {
-    const series = dailyTrendSeries.value;
+    const series = trendSeries.value;
     const n = series.length;
     if (n === 0) {
         return null;
@@ -579,10 +213,110 @@ const trendChart = computed(() => {
         xLabelY: H - 10,
         xTicks: xTickIdxs.map((i) => ({
             x: pts[i].x,
-            label: `${series[i].day}日`,
+            label: series[i].label,
         })),
     };
 });
+
+const categoryLabelMap = computed(() =>
+    buildCategoryLabelMap(metaCategories.value),
+);
+
+function memberCreatorLabel(creatorKey: string): string {
+    const u = usersList.value.find((x) => String(x.id) === creatorKey);
+    const nick = u?.nickname?.trim();
+    if (nick) return nick;
+    if (creatorKey.length > 10) return `成员 …${creatorKey.slice(-4)}`;
+    return "成员";
+}
+
+const rankMemberTabList = computed(() => {
+    const tabs: { key: string; title: string }[] = [
+        { key: "all", title: "全部" },
+    ];
+    const seen = new Set<string>(["all"]);
+    for (const u of usersList.value) {
+        const k = String(u.id);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const nick = u.nickname?.trim();
+        const title =
+            nick && nick.length > 0
+                ? nick
+                : k.length > 10
+                  ? `成员 …${k.slice(-4)}`
+                  : "成员";
+        tabs.push({ key: k, title });
+    }
+    for (const b of bills.value) {
+        const k = String(b.creatorId);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        tabs.push({ key: k, title: memberCreatorLabel(k) });
+    }
+    return tabs;
+});
+
+watch(rankMemberTabList, (tabs) => {
+    const key = rankCreatorKey.value;
+    if (key === "all") return;
+    if (!tabs.some((t) => t.key === key)) {
+        rankCreatorKey.value = "all";
+    }
+});
+
+type CategoryRankItem = {
+    categoryId: string;
+    label: string;
+    amount: number;
+    share: number;
+};
+
+const categoryRanking = computed(() => {
+    const kind = rankKind.value;
+    const creator = rankCreatorKey.value;
+    const { start, end } = rangeBounds(rangeKind.value);
+    const map = new Map<string, number>();
+    const labels = new Map<string, string>();
+
+    for (const b of bills.value) {
+        if (b.time < start || b.time > end) continue;
+        if (b.type !== kind) continue;
+        if (creator !== "all" && String(b.creatorId) !== creator) continue;
+        const id = b.categoryId;
+        map.set(id, (map.get(id) ?? 0) + b.amount);
+        if (!labels.has(id)) {
+            const name = categoryLabelMap.value.get(id)?.trim();
+            labels.set(id, name && name.length > 0 ? name : "未命名分类");
+        }
+    }
+
+    const rows: CategoryRankItem[] = [...map.entries()]
+        .map(([key, amount]) => ({
+            categoryId: key,
+            label: labels.get(key) ?? key,
+            amount,
+            share: 0,
+        }))
+        .filter((x) => x.amount > 0)
+        .sort((a, b) => b.amount - a.amount);
+
+    const total = rows.reduce((s, x) => s + x.amount, 0);
+    if (total > 0) {
+        for (const row of rows) {
+            row.share = row.amount / total;
+        }
+    }
+    return { total, rows };
+});
+
+const categoryRankTotalLabel = computed(() => {
+    const p = categoryRanking.value;
+    if (p.rows.length === 0) return "—";
+    return fmt.format(amountToNumber(p.total));
+});
+
+let unsubscribe: (() => void) | undefined;
 
 async function refreshData(bookId: string) {
     const [txs, users, meta] = await Promise.all([
