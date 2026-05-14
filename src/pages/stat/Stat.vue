@@ -787,6 +787,10 @@ onUnmounted(() => {
 
 .stat-trend-empty {
     padding: 24px 0;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 /* Category ranking card */
@@ -873,5 +877,9 @@ onUnmounted(() => {
 
 .stat-rank-empty {
     padding: 24px 0;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 </style>
