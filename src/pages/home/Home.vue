@@ -14,6 +14,7 @@ import {
 } from "@/composables/use-history-range";
 import { buildCategoryLabelMap } from "@/composables/use-ledger-meta";
 import { useSync } from "@/composables/use-sync";
+import { useTxFilter } from "@/composables/use-tx-filter";
 import type { Full } from "@/database/stash";
 import type { Transaction } from "@/database/tables/transaction";
 import type { User } from "@/database/tables/user";
@@ -42,12 +43,23 @@ const fmt = new Intl.NumberFormat("zh-CN", {
     maximumFractionDigits: 2,
 });
 
-const visibleRows = computed(() => {
+const showFilterSheet = ref(false);
+
+const allRangeRows = computed(() => {
     const start = history.rangeStart.value.valueOf();
     const end = history.rangeEnd.value.valueOf();
     return bills.value
         .filter((b) => b.time >= start && b.time < end)
         .sort((a, b) => b.time - a.time);
+});
+
+const txFilter = useTxFilter(() => allRangeRows.value);
+
+const visibleRows = computed(() => {
+    if (txFilter.hasActiveFilters.value) {
+        return txFilter.filteredRows.value;
+    }
+    return allRangeRows.value;
 });
 
 /** 顶部 hero：今日每位成员的收支合计（仅 income/expense，不含转账） */
@@ -302,9 +314,24 @@ onUnmounted(() => {
                 </header>
             </div>
 
+            <div class="journal-search-bar">
+                <button
+                    type="button"
+                    class="journal-search-btn"
+                    :class="{ 'journal-search-btn--active': txFilter.hasActiveFilters.value }"
+                    @click="showFilterSheet = true"
+                >
+                    <van-icon name="search" size="16" />
+                    <span>{{ txFilter.filters.value.keyword || '搜索流水' }}</span>
+                    <span v-if="txFilter.hasActiveFilters.value" class="journal-search-btn__badge" />
+                </button>
+            </div>
+
             <section class="journal-section">
                 <h2 class="journal-section-title">
-                    <span class="journal-section-title__text">{{ history.isToday.value ? '今日流水' : '流水记录' }}</span>
+                    <span class="journal-section-title__text">
+                        {{ history.isToday.value && !txFilter.hasActiveFilters.value ? '今日流水' : `流水 · ${visibleRows.length} 条` }}
+                    </span>
                 </h2>
 
                 <div class="journal-list-scroll">
@@ -389,6 +416,55 @@ onUnmounted(() => {
                 </div>
             </section>
         </div>
+
+        <van-popup
+            v-model:show="showFilterSheet"
+            position="bottom"
+            round
+            safe-area-inset-bottom
+            class="filter-popup"
+        >
+            <div class="filter-panel">
+                <div class="filter-panel__head">
+                    <h2 class="filter-panel__title">筛选流水</h2>
+                    <button type="button" class="filter-panel__reset" @click="txFilter.resetFilters()">重置</button>
+                </div>
+                <div class="filter-panel__body">
+                    <div class="filter-field">
+                        <label class="filter-field__label">关键词</label>
+                        <input v-model="txFilter.filters.value.keyword" type="text" class="filter-field__input" placeholder="搜索备注…" autocomplete="off" />
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-field__label">金额范围</label>
+                        <div class="filter-field__row">
+                            <input v-model.number="txFilter.filters.value.minAmount" type="number" inputmode="decimal" class="filter-field__input filter-field__input--half" placeholder="最小" min="0" />
+                            <span class="filter-field__sep">–</span>
+                            <input v-model.number="txFilter.filters.value.maxAmount" type="number" inputmode="decimal" class="filter-field__input filter-field__input--half" placeholder="最大" min="0" />
+                        </div>
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-field__label">类型</label>
+                        <div class="filter-chips">
+                            <button
+                                v-for="t in ([{ v: 'expense', l: '支出' }, { v: 'income', l: '收入' }, { v: 'transfer', l: '转账' }] as const)"
+                                :key="t.v"
+                                type="button"
+                                class="filter-chip"
+                                :class="{ 'filter-chip--active': txFilter.filters.value.types.includes(t.v) }"
+                                @click="txFilter.filters.value.types.includes(t.v) ? (txFilter.filters.value.types = txFilter.filters.value.types.filter((x) => x !== t.v)) : txFilter.filters.value.types.push(t.v)"
+                            >
+                                {{ t.l }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-panel__foot">
+                    <van-button type="primary" block round @click="showFilterSheet = false">
+                        查看 {{ txFilter.filteredRows.value.length }} 条结果
+                    </van-button>
+                </div>
+            </div>
+        </van-popup>
     </div>
 </template>
 
@@ -992,5 +1068,143 @@ onUnmounted(() => {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.journal-search-bar {
+    flex-shrink: 0;
+    padding: 0 2px;
+    margin-bottom: 14px;
+    opacity: 0;
+    animation: journal-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.08s forwards;
+}
+.journal-search-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.1);
+    border-radius: 14px;
+    background: rgba(255, 254, 251, 0.85);
+    color: var(--ledger-ink-faint);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+}
+.journal-search-btn:active {
+    border-color: rgba(var(--ledger-accent-rgb), 0.25);
+}
+.journal-search-btn--active {
+    border-color: rgba(var(--ledger-accent-rgb), 0.35);
+    color: var(--ledger-accent-deep);
+}
+.journal-search-btn__badge {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ledger-accent);
+    margin-left: auto;
+}
+.filter-popup :deep(.van-popup__content) {
+    border-radius: 20px 20px 0 0;
+    background: var(--ledger-paper);
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+}
+.filter-panel {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+}
+.filter-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid rgba(var(--ledger-accent-rgb), 0.08);
+}
+.filter-panel__title {
+    margin: 0;
+    font-family: var(--ledger-font-display);
+    font-size: 20px;
+    font-weight: 400;
+}
+.filter-panel__reset {
+    border: none;
+    background: transparent;
+    color: var(--ledger-ink-muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.filter-panel__body {
+    flex: 1;
+    padding: 14px 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.filter-field__label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--ledger-ink-muted);
+    margin-bottom: 8px;
+}
+.filter-field__input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.12);
+    border-radius: 12px;
+    background: rgba(255, 254, 251, 0.9);
+    font: inherit;
+    font-size: 15px;
+    color: var(--ledger-ink);
+}
+.filter-field__input:focus {
+    outline: none;
+    border-color: rgba(var(--ledger-accent-rgb), 0.35);
+}
+.filter-field__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.filter-field__input--half {
+    flex: 1;
+    min-width: 0;
+}
+.filter-field__sep {
+    color: var(--ledger-ink-faint);
+    font-weight: 600;
+}
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.filter-chip {
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.12);
+    background: rgba(255, 254, 251, 0.7);
+    color: var(--ledger-ink-muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.filter-chip--active {
+    background: rgba(var(--ledger-accent-rgb), 0.12);
+    color: var(--ledger-accent-deep);
+    border-color: rgba(var(--ledger-accent-rgb), 0.25);
+}
+.filter-panel__foot {
+    flex-shrink: 0;
+    padding: 12px 18px 8px;
 }
 </style>
