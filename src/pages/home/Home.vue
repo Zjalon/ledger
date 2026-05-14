@@ -43,10 +43,10 @@ const showFilterSheet = ref(false);
 const showCalendar = ref(false);
 const calendarValue = ref<[number, number] | null>(null);
 
-function onCalendarConfirm({ selectedDates }: { selectedDates: Date[] }) {
-    if (selectedDates.length >= 2) {
-        const start = selectedDates[0].valueOf();
-        const end = selectedDates[1].valueOf() + 24 * 60 * 60 * 1000;
+function onCalendarConfirm(dates: Date[]) {
+    if (dates.length >= 2) {
+        const start = dates[0].valueOf();
+        const end = dates[1].valueOf() + 24 * 60 * 60 * 1000;
         calendarValue.value = [start, end];
         txFilter.filters.value.dateStart = start;
         txFilter.filters.value.dateEnd = end;
@@ -424,6 +424,7 @@ onUnmounted(() => {
         <van-calendar
             v-model:show="showCalendar"
             type="range"
+            :min-date="new Date(2020, 0, 1)"
             @confirm="onCalendarConfirm"
         />
     </div>
