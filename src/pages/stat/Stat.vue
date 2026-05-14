@@ -367,350 +367,210 @@ onUnmounted(() => {
         </div>
         <div class="stat-inner">
             <div class="stat-scroll-body stat-scroll-body--stack">
-                <section v-if="bills.length > 0" class="stat-section stat-pie-card">
-                    <h2 class="stat-section__title stat-pie-card__title">收支构成</h2>
-                    <p class="stat-section__lead stat-pie-card__subtitle">
-                        不含转账 · 按金额占比
-                    </p>
+                <template v-if="bills.length > 0">
+                    <!-- Global time selector -->
                     <van-tabs
                         v-model:active="rangeKind"
                         type="card"
-                        class="stat-compose-tabs"
+                        class="stat-global-tabs"
                     >
                         <van-tab title="本周" name="week" />
                         <van-tab title="本月" name="month" />
-                        <van-tab title="本年" name="year" />
+                        <van-tab title="今年" name="year" />
                     </van-tabs>
-                    <p class="stat-compose-period">{{ periodLabel }}</p>
-                    <div class="stat-compose-summary">
-                        <div class="stat-stat stat-stat--out">
-                            <span class="stat-stat__label">支出</span>
-                            <span class="stat-stat__value">{{
-                                expenseLabel
-                            }}</span>
-                        </div>
-                        <div class="stat-stat-divider" aria-hidden="true" />
-                        <div class="stat-stat stat-stat--in">
-                            <span class="stat-stat__label">收入</span>
-                            <span class="stat-stat__value">{{
-                                incomeLabel
-                            }}</span>
-                        </div>
-                    </div>
 
-                    <template v-if="hasFlowInRange">
-                        <div class="stat-pie-wrap">
-                        <svg
-                            class="stat-pie-svg"
-                            viewBox="0 0 100 100"
-                            role="img"
-                            :aria-label="`支出 ${Math.round(expenseShare * 100)}%，收入 ${Math.round((1 - expenseShare) * 100)}%`"
+                    <!-- Overview cards -->
+                    <section class="stat-overview">
+                        <div class="stat-overview__card stat-overview__card--expense">
+                            <span class="stat-overview__label">支出</span>
+                            <span class="stat-overview__value stat-overview__value--expense">
+                                −{{ expenseLabel }}
+                            </span>
+                        </div>
+                        <div class="stat-overview__card stat-overview__card--income">
+                            <span class="stat-overview__label">收入</span>
+                            <span class="stat-overview__value stat-overview__value--income">
+                                +{{ incomeLabel }}
+                            </span>
+                        </div>
+                        <div class="stat-overview__card stat-overview__card--net">
+                            <span class="stat-overview__label">结余</span>
+                            <span
+                                class="stat-overview__value"
+                                :class="{
+                                    'stat-overview__value--income': netRaw > 0,
+                                    'stat-overview__value--expense': netRaw < 0,
+                                    'stat-overview__value--zero': netRaw === 0,
+                                }"
+                            >
+                                {{ netRaw >= 0 ? '+' : '−' }}{{ netLabel }}
+                            </span>
+                        </div>
+                    </section>
+
+                    <!-- Trend chart -->
+                    <section class="stat-section stat-trend-card">
+                        <div class="stat-trend-card__header">
+                            <h2 class="stat-section__title">趋势</h2>
+                            <span class="stat-trend-card__total">合计 {{ trendTotalLabel }}</span>
+                        </div>
+                        <van-tabs
+                            v-model:active="trendKind"
+                            type="card"
+                            class="stat-trend-tabs"
                         >
-                            <circle
-                                v-if="!piePaths"
-                                class="stat-pie-svg__empty"
-                                cx="50"
-                                cy="50"
-                                r="42"
-                            />
-                            <template v-else>
-                                <path
-                                    v-if="piePaths.expense"
-                                    class="stat-pie-svg__expense"
-                                    :d="piePaths.expense"
-                                />
-                                <path
-                                    v-if="piePaths.income"
-                                    class="stat-pie-svg__income"
-                                    :d="piePaths.income"
-                                />
-                            </template>
-                        </svg>
-                        <ul class="stat-pie-legend">
-                            <li class="stat-pie-legend__row">
-                                <span
-                                    class="stat-pie-legend__sw stat-pie-legend__sw--expense"
-                                />
-                                <span class="stat-pie-legend__name">支出</span>
-                                <span class="stat-pie-legend__pct">{{
-                                    pieTotal > 0
-                                        ? `${Math.round(expenseShare * 100)}%`
-                                        : "—"
-                                }}</span>
-                            </li>
-                            <li class="stat-pie-legend__row">
-                                <span
-                                    class="stat-pie-legend__sw stat-pie-legend__sw--income"
-                                />
-                                <span class="stat-pie-legend__name">收入</span>
-                                <span class="stat-pie-legend__pct">{{
-                                    pieTotal > 0
-                                        ? `${Math.round((1 - expenseShare) * 100)}%`
-                                        : "—"
-                                }}</span>
-                            </li>
-                        </ul>
-                        </div>
-                        <p class="stat-pie-card__net">{{ netLabel }}</p>
-                    </template>
-                    <van-empty
-                        v-else
-                        class="stat-compose-empty"
-                        image="search"
-                        description="所选时间范围内暂无收支（转账不计入饼图）"
-                    />
-                </section>
+                            <van-tab title="支出" name="expense" />
+                            <van-tab title="收入" name="income" />
+                        </van-tabs>
 
-                <section v-if="bills.length > 0" class="stat-section stat-split-card">
-                    <h2 class="stat-section__title stat-split-card__title">分类与成员</h2>
-                    <p class="stat-section__lead stat-split-card__subtitle">
-                        {{ splitPiePeriodLabel }} · {{ splitPieDimHint }} · 合计
-                        {{ splitPieTotalLabel }}
-                    </p>
-                    <van-tabs
-                        v-model:active="splitPieRange"
-                        type="card"
-                        class="stat-split-tabs stat-split-tabs--range"
-                    >
-                        <van-tab title="本周" name="week" />
-                        <van-tab title="本月" name="month" />
-                        <van-tab title="本年" name="year" />
-                    </van-tabs>
-                    <van-tabs
-                        v-model:active="splitPieFlowKind"
-                        type="card"
-                        class="stat-split-tabs stat-split-tabs--flow"
-                    >
-                        <van-tab title="支出" name="expense" />
-                        <van-tab title="收入" name="income" />
-                    </van-tabs>
-                    <van-tabs
-                        v-model:active="splitPieCreatorKey"
-                        scrollable
-                        shrink
-                        type="card"
-                        class="stat-split-tabs stat-split-tabs--members"
-                    >
-                        <van-tab
-                            v-for="tab in splitPieMemberTabList"
-                            :key="tab.key"
-                            :title="tab.title"
-                            :name="tab.key"
+                        <div
+                            v-if="trendHasAny && trendChart"
+                            class="stat-line-svg-wrap"
+                        >
+                            <svg
+                                class="stat-line-svg"
+                                :viewBox="`0 0 ${trendChart.viewW} ${trendChart.viewH}`"
+                                preserveAspectRatio="xMidYMid meet"
+                                role="img"
+                                :aria-label="`${trendKind === 'expense' ? '支出' : '收入'}趋势折线图`"
+                            >
+                                <defs>
+                                    <linearGradient
+                                        :id="`stat-trend-fill-${trendKind}`"
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1"
+                                    >
+                                        <stop
+                                            offset="0%"
+                                            :stop-color="trendFillColor"
+                                            stop-opacity="0.24"
+                                        />
+                                        <stop
+                                            offset="100%"
+                                            :stop-color="trendFillColor"
+                                            stop-opacity="0.03"
+                                        />
+                                    </linearGradient>
+                                </defs>
+                                <text
+                                    class="stat-line-svg__ylabel"
+                                    x="4"
+                                    y="18"
+                                >
+                                    {{ trendChart.maxLabel }}
+                                </text>
+                                <line
+                                    class="stat-line-svg__grid"
+                                    :x1="trendChart.gridX1"
+                                    :y1="trendChart.midGridY"
+                                    :x2="trendChart.gridX2"
+                                    :y2="trendChart.midGridY"
+                                />
+                                <path
+                                    class="stat-line-svg__area"
+                                    :d="trendChart.areaD"
+                                    :fill="`url(#stat-trend-fill-${trendKind})`"
+                                />
+                                <polyline
+                                    class="stat-line-svg__line"
+                                    :class="{
+                                        'stat-line-svg__line--expense': trendKind === 'expense',
+                                        'stat-line-svg__line--income': trendKind === 'income',
+                                    }"
+                                    fill="none"
+                                    :points="trendChart.linePoints"
+                                />
+                                <g
+                                    v-for="(tk, i) in trendChart.xTicks"
+                                    :key="`xt-${i}`"
+                                >
+                                    <text
+                                        class="stat-line-svg__xlabel"
+                                        :x="tk.x"
+                                        :y="trendChart.xLabelY"
+                                        text-anchor="middle"
+                                    >
+                                        {{ tk.label }}
+                                    </text>
+                                </g>
+                            </svg>
+                        </div>
+                        <van-empty
+                            v-else
+                            class="stat-trend-empty"
+                            image="search"
+                            :description="`所选时间范围内暂无${trendKind === 'expense' ? '支出' : '收入'}`"
                         />
-                    </van-tabs>
+                    </section>
 
-                    <div v-if="splitPie" class="stat-split-pie-wrap">
-                        <svg
-                            class="stat-pie-svg stat-split-pie-svg"
-                            viewBox="0 0 100 100"
-                            role="img"
-                            :aria-label="`统计饼图 ${splitPieDimHint}`"
+                    <!-- Category ranking -->
+                    <section class="stat-section stat-rank-card">
+                        <div class="stat-rank-card__header">
+                            <h2 class="stat-section__title">分类排行</h2>
+                            <span class="stat-rank-card__total">合计 {{ categoryRankTotalLabel }}</span>
+                        </div>
+                        <van-tabs
+                            v-model:active="rankKind"
+                            type="card"
+                            class="stat-rank-tabs"
                         >
-                            <path
-                                v-for="sl in splitPie.slices"
-                                :key="sl.sliceKey"
-                                :d="sl.pathD"
-                                :fill="sl.fill"
-                                stroke="rgba(255, 254, 251, 0.72)"
-                                stroke-width="0.55"
-                                vector-effect="non-scaling-stroke"
+                            <van-tab title="支出" name="expense" />
+                            <van-tab title="收入" name="income" />
+                        </van-tabs>
+                        <van-tabs
+                            v-model:active="rankCreatorKey"
+                            scrollable
+                            shrink
+                            type="card"
+                            class="stat-rank-tabs stat-rank-tabs--members"
+                        >
+                            <van-tab
+                                v-for="tab in rankMemberTabList"
+                                :key="tab.key"
+                                :title="tab.title"
+                                :name="tab.key"
                             />
-                        </svg>
-                        <ul class="stat-split-legend">
+                        </van-tabs>
+
+                        <ul v-if="categoryRanking.rows.length > 0" class="stat-rank-list">
                             <li
-                                v-for="sl in splitPie.slices"
-                                :key="sl.sliceKey"
-                                class="stat-split-legend__row"
+                                v-for="item in categoryRanking.rows"
+                                :key="item.categoryId"
+                                class="stat-rank-item"
                             >
-                                <span
-                                    class="stat-split-legend__sw"
-                                    :style="{ background: sl.fill }"
-                                />
-                                <span class="stat-split-legend__name">{{
-                                    sl.label
-                                }}</span>
-                                <span class="stat-split-legend__amt">{{
-                                    fmt.format(amountToNumber(sl.amount))
-                                }}</span>
-                                <span class="stat-split-legend__pct">{{
-                                    `${Math.round(sl.share * 100)}%`
-                                }}</span>
+                                <div class="stat-rank-item__top">
+                                    <span class="stat-rank-item__name">{{ item.label }}</span>
+                                    <span class="stat-rank-item__amount">
+                                        {{ fmt.format(amountToNumber(item.amount)) }}
+                                    </span>
+                                </div>
+                                <div class="stat-rank-item__bar-track">
+                                    <div
+                                        class="stat-rank-item__bar-fill"
+                                        :class="`stat-rank-item__bar-fill--${rankKind}`"
+                                        :style="{ width: `${Math.round(item.share * 100)}%` }"
+                                    />
+                                </div>
+                                <span class="stat-rank-item__pct">
+                                    {{ Math.round(item.share * 100) }}%
+                                </span>
                             </li>
                         </ul>
-                    </div>
-                    <van-empty
-                        v-else
-                        class="stat-split-empty"
-                        image="search"
-                        description="当前条件下暂无数据"
-                    />
-                </section>
-
-                <section v-if="bills.length > 0" class="stat-section stat-member-card">
-                    <h2 class="stat-section__title stat-member-card__title">本月成员构成</h2>
-                    <p class="stat-section__lead stat-member-card__subtitle">
-                        {{ trendMonthLabel }} · 按创建者 · 不含转账 · 合计
-                        {{ memberMonthTotalLabel }}
-                    </p>
-                    <van-tabs
-                        v-model:active="memberPieKind"
-                        type="card"
-                        class="stat-member-tabs"
-                    >
-                        <van-tab title="支出" name="expense" />
-                        <van-tab title="收入" name="income" />
-                    </van-tabs>
-
-                    <div v-if="memberMonthPie" class="stat-member-pie-wrap">
-                        <svg
-                            class="stat-pie-svg stat-member-pie-svg"
-                            viewBox="0 0 100 100"
-                            role="img"
-                            :aria-label="`本月${memberPieKind === 'expense' ? '支出' : '收入'}成员占比`"
-                        >
-                            <path
-                                v-for="sl in memberMonthPie.slices"
-                                :key="sl.creatorKey"
-                                :d="sl.pathD"
-                                :fill="sl.fill"
-                                stroke="rgba(255, 254, 251, 0.72)"
-                                stroke-width="0.55"
-                                vector-effect="non-scaling-stroke"
-                            />
-                        </svg>
-                        <ul class="stat-member-legend">
-                            <li
-                                v-for="sl in memberMonthPie.slices"
-                                :key="sl.creatorKey"
-                                class="stat-member-legend__row"
-                            >
-                                <span
-                                    class="stat-member-legend__sw"
-                                    :style="{ background: sl.fill }"
-                                />
-                                <span class="stat-member-legend__name">{{
-                                    sl.label
-                                }}</span>
-                                <span class="stat-member-legend__amt">{{
-                                    fmt.format(amountToNumber(sl.amount))
-                                }}</span>
-                                <span class="stat-member-legend__pct">{{
-                                    `${Math.round(sl.share * 100)}%`
-                                }}</span>
-                            </li>
-                        </ul>
-                    </div>
-                    <van-empty
-                        v-else
-                        class="stat-member-empty"
-                        image="search"
-                        :description="`本月暂无${memberPieKind === 'expense' ? '支出' : '收入'}（不含转账）`"
-                    />
-                </section>
+                        <van-empty
+                            v-else
+                            class="stat-rank-empty"
+                            image="search"
+                            description="当前条件下暂无数据"
+                        />
+                    </section>
+                </template>
 
                 <van-empty
                     v-else
                     description="暂无账单数据"
                 />
-
-                <section v-if="bills.length > 0" class="stat-section stat-line-card">
-                    <h2 class="stat-section__title stat-line-card__title">本月每日趋势</h2>
-                    <p class="stat-section__lead stat-line-card__subtitle">
-                        {{ trendMonthLabel }} · 不含转账 · 合计
-                        {{ trendMonthTotalLabel }}
-                    </p>
-                    <van-tabs
-                        v-model:active="trendKind"
-                        type="card"
-                        class="stat-trend-tabs"
-                    >
-                        <van-tab title="支出" name="expense" />
-                        <van-tab title="收入" name="income" />
-                    </van-tabs>
-
-                    <div
-                        v-if="trendHasAny && trendChart"
-                        class="stat-line-svg-wrap"
-                    >
-                        <svg
-                            class="stat-line-svg"
-                            :viewBox="`0 0 ${trendChart.viewW} ${trendChart.viewH}`"
-                            preserveAspectRatio="xMidYMid meet"
-                            role="img"
-                            :aria-label="`${trendKind === 'expense' ? '支出' : '收入'}本月按日折线`"
-                        >
-                            <defs>
-                                <linearGradient
-                                    :id="`stat-trend-fill-${trendKind}`"
-                                    x1="0"
-                                    y1="0"
-                                    x2="0"
-                                    y2="1"
-                                >
-                                    <stop
-                                        offset="0%"
-                                        :stop-color="trendFillColor"
-                                        stop-opacity="0.24"
-                                    />
-                                    <stop
-                                        offset="100%"
-                                        :stop-color="trendFillColor"
-                                        stop-opacity="0.03"
-                                    />
-                                </linearGradient>
-                            </defs>
-                            <text
-                                class="stat-line-svg__ylabel"
-                                x="4"
-                                y="18"
-                            >
-                                {{ trendChart.maxLabel }}
-                            </text>
-                            <line
-                                class="stat-line-svg__grid"
-                                :x1="trendChart.gridX1"
-                                :y1="trendChart.midGridY"
-                                :x2="trendChart.gridX2"
-                                :y2="trendChart.midGridY"
-                            />
-                            <path
-                                class="stat-line-svg__area"
-                                :d="trendChart.areaD"
-                                :fill="`url(#stat-trend-fill-${trendKind})`"
-                            />
-                            <polyline
-                                class="stat-line-svg__line"
-                                :class="{
-                                    'stat-line-svg__line--expense':
-                                        trendKind === 'expense',
-                                    'stat-line-svg__line--income':
-                                        trendKind === 'income',
-                                }"
-                                fill="none"
-                                :points="trendChart.linePoints"
-                            />
-                            <g
-                                v-for="(tk, i) in trendChart.xTicks"
-                                :key="`xt-${i}`"
-                            >
-                                <text
-                                    class="stat-line-svg__xlabel"
-                                    :x="tk.x"
-                                    :y="trendChart.xLabelY"
-                                    text-anchor="middle"
-                                >
-                                    {{ tk.label }}
-                                </text>
-                            </g>
-                        </svg>
-                    </div>
-                    <van-empty
-                        v-else
-                        class="stat-line-empty"
-                        image="search"
-                        description="本月暂无该项流水"
-                    />
-                </section>
             </div>
         </div>
     </div>
