@@ -740,7 +740,6 @@ onUnmounted(() => {
 .stat-line-svg-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    min-height: 140px;
 }
 
 .stat-line-svg {
@@ -787,7 +786,17 @@ onUnmounted(() => {
 }
 
 .stat-trend-empty {
-    padding: 24px 0;
+    padding: 8px 0;
+}
+
+.stat-trend-empty :deep(.van-empty__image) {
+    width: 48px;
+    height: 48px;
+}
+
+.stat-trend-empty :deep(.van-empty__description) {
+    font-size: 12px;
+    margin-top: 4px;
 }
 
 /* Category ranking card */
@@ -818,7 +827,6 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     gap: 14px;
-    min-height: 140px;
 }
 
 .stat-rank-item {
@@ -874,6 +882,16 @@ onUnmounted(() => {
 }
 
 .stat-rank-empty {
-    padding: 24px 0;
+    padding: 8px 0;
+}
+
+.stat-rank-empty :deep(.van-empty__image) {
+    width: 48px;
+    height: 48px;
+}
+
+.stat-rank-empty :deep(.van-empty__description) {
+    font-size: 12px;
+    margin-top: 4px;
 }
 </style>
