@@ -97,6 +97,37 @@ const visibleRows = computed(() => {
     return allRangeRows.value;
 });
 
+type DayGroup = { dateKey: string; label: string; items: Full<Transaction>[] };
+
+const groupedRows = computed((): DayGroup[] => {
+    const map = new Map<string, Full<Transaction>[]>();
+    for (const tx of visibleRows.value) {
+        const key = dayjs(tx.time).format("YYYY-MM-DD");
+        const arr = map.get(key);
+        if (arr) {
+            arr.push(tx);
+        } else {
+            map.set(key, [tx]);
+        }
+    }
+    return [...map.entries()].map(([dateKey, items]) => ({
+        dateKey,
+        label: dateKey,
+        items,
+    }));
+});
+
+const sectionTitle = computed(() => {
+    const f = txFilter.filters.value;
+    if (f.dateStart !== null && f.dateEnd !== null) {
+        const start = dayjs(f.dateStart).format("YYYY-MM-DD");
+        const end = dayjs(f.dateEnd - 24 * 60 * 60 * 1000).format("YYYY-MM-DD");
+        if (start === end) return `${start} 流水`;
+        return `${start} – ${end} 流水`;
+    }
+    return `${dayjs().format("YYYY-MM-DD")} 流水`;
+});
+
 function creatorLabelFromKey(creatorKey: string): string {
     const u = usersList.value.find((x) => String(x.id) === creatorKey);
     const nick = u?.nickname?.trim();
@@ -253,7 +284,7 @@ onUnmounted(() => {
             <section class="journal-section">
                 <h2 class="journal-section-title">
                     <span class="journal-section-title__text">
-                        {{ txFilter.hasActiveFilters.value ? `流水 · ${visibleRows.length} 条` : '今日流水' }}
+                        {{ sectionTitle }}
                     </span>
                 </h2>
 
@@ -271,79 +302,87 @@ onUnmounted(() => {
                         <p class="journal-empty__hint">点击底部中间的「记一笔」。</p>
                     </div>
 
-                    <ol v-else class="journal-timeline" role="list">
-                        <li
-                            v-for="(tx, i) in visibleRows"
-                            :key="tx.id"
-                            class="journal-timeline__item"
-                            :style="{ animationDelay: `${0.06 + i * 0.045}s` }"
-                        >
-                            <van-swipe-cell class="journal-swipe">
-                                <div
-                                    class="journal-row"
-                                    :class="rowModifier(tx)"
+                    <div v-else class="journal-groups">
+                        <section v-for="group in groupedRows" :key="group.dateKey" class="journal-day-group">
+                            <h3 class="journal-day-header">
+                                <span class="journal-day-header__date">{{ group.label }}</span>
+                                <span class="journal-day-header__count">{{ group.items.length }} 条</span>
+                            </h3>
+                            <ol class="journal-timeline" role="list">
+                                <li
+                                    v-for="(tx, i) in group.items"
+                                    :key="tx.id"
+                                    class="journal-timeline__item"
+                                    :style="{ animationDelay: `${0.06 + i * 0.045}s` }"
                                 >
-                                    <div class="journal-row__card">
-                                        <div class="journal-row__top">
-                                            <span class="journal-row__who">{{
-                                                creatorLabel(tx)
-                                            }}</span>
-                                            <span
-                                                class="journal-row__pill"
-                                                :class="`journal-row__pill--${tx.type}`"
+                                    <van-swipe-cell class="journal-swipe">
+                                        <div
+                                            class="journal-row"
+                                            :class="rowModifier(tx)"
+                                        >
+                                            <div class="journal-row__card">
+                                                <div class="journal-row__top">
+                                                    <span class="journal-row__who">{{
+                                                        creatorLabel(tx)
+                                                    }}</span>
+                                                    <span
+                                                        class="journal-row__pill"
+                                                        :class="`journal-row__pill--${tx.type}`"
+                                                    >
+                                                        {{ flowKindLabel(tx) }}
+                                                    </span>
+                                                    <time
+                                                        class="journal-row__when"
+                                                        :datetime="
+                                                            new Date(
+                                                                tx.time,
+                                                            ).toISOString()
+                                                        "
+                                                    >
+                                                        {{ timeLabel(tx.time) }}
+                                                    </time>
+                                                </div>
+                                                <p class="journal-row__what">
+                                                    {{ purposeLine(tx) }}
+                                                </p>
+                                                <div v-if="tx.type !== 'transfer' && tx.accountId" class="journal-row__account">
+                                                    <span class="journal-row__account-tag">{{ accountName(tx.accountId) }}</span>
+                                                </div>
+                                                <div v-else-if="tx.type === 'transfer' && (tx.accountId || tx.transferTo)" class="journal-row__account">
+                                                    <span v-if="tx.accountId" class="journal-row__account-tag">{{ accountName(tx.accountId) }}</span>
+                                                    <span v-if="tx.accountId && tx.transferTo" class="journal-row__account-arrow">→</span>
+                                                    <span v-if="tx.transferTo" class="journal-row__account-tag">{{ accountName(tx.transferTo) }}</span>
+                                                </div>
+                                                <p class="journal-row__money">
+                                                    {{ amountLabel(tx) }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <template #right>
+                                            <van-button
+                                                square
+                                                type="primary"
+                                                class="swipe-side-btn swipe-side-btn--edit"
+                                                @click.stop="startEdit?.(tx)"
                                             >
-                                                {{ flowKindLabel(tx) }}
-                                            </span>
-                                            <time
-                                                class="journal-row__when"
-                                                :datetime="
-                                                    new Date(
-                                                        tx.time,
-                                                    ).toISOString()
+                                                编辑
+                                            </van-button>
+                                            <van-button
+                                                square
+                                                type="danger"
+                                                class="swipe-side-btn swipe-side-btn--del"
+                                                @click.stop="
+                                                    confirmDeleteTransaction(tx)
                                                 "
                                             >
-                                                {{ timeLabel(tx.time) }}
-                                            </time>
-                                        </div>
-                                        <p class="journal-row__what">
-                                            {{ purposeLine(tx) }}
-                                        </p>
-                                        <div v-if="tx.type !== 'transfer' && tx.accountId" class="journal-row__account">
-                                            <span class="journal-row__account-tag">{{ accountName(tx.accountId) }}</span>
-                                        </div>
-                                        <div v-else-if="tx.type === 'transfer' && (tx.accountId || tx.transferTo)" class="journal-row__account">
-                                            <span v-if="tx.accountId" class="journal-row__account-tag">{{ accountName(tx.accountId) }}</span>
-                                            <span v-if="tx.accountId && tx.transferTo" class="journal-row__account-arrow">→</span>
-                                            <span v-if="tx.transferTo" class="journal-row__account-tag">{{ accountName(tx.transferTo) }}</span>
-                                        </div>
-                                        <p class="journal-row__money">
-                                            {{ amountLabel(tx) }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <template #right>
-                                    <van-button
-                                        square
-                                        type="primary"
-                                        class="swipe-side-btn swipe-side-btn--edit"
-                                        @click.stop="startEdit?.(tx)"
-                                    >
-                                        编辑
-                                    </van-button>
-                                    <van-button
-                                        square
-                                        type="danger"
-                                        class="swipe-side-btn swipe-side-btn--del"
-                                        @click.stop="
-                                            confirmDeleteTransaction(tx)
-                                        "
-                                    >
-                                        删除
-                                    </van-button>
-                                </template>
-                            </van-swipe-cell>
-                        </li>
-                    </ol>
+                                                删除
+                                            </van-button>
+                                        </template>
+                                    </van-swipe-cell>
+                                </li>
+                            </ol>
+                        </section>
+                    </div>
                 </div>
             </section>
         </div>
@@ -467,7 +506,7 @@ onUnmounted(() => {
 }
 
 .journal-inner--layout {
-    gap: 16px;
+    gap: 8px;
 }
 
 .journal-section {
@@ -559,6 +598,39 @@ onUnmounted(() => {
     margin: 0;
     padding: 0;
     list-style: none;
+}
+
+.journal-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.journal-day-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.journal-day-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 10px;
+    padding: 0 2px;
+}
+
+.journal-day-header__date {
+    font-family: var(--ledger-font-display);
+    font-size: 0.95rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--journal-ink);
+}
+
+.journal-day-header__count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--journal-muted);
 }
 
 .journal-timeline__item {
