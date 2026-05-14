@@ -8,6 +8,10 @@ import {
 } from "vant";
 import { computed, inject, onMounted, onUnmounted, ref } from "vue";
 import { LoginAPI } from "@/api/endpoints/gitee";
+import {
+    type RangeUnit,
+    useHistoryRange,
+} from "@/composables/use-history-range";
 import { buildCategoryLabelMap } from "@/composables/use-ledger-meta";
 import { useSync } from "@/composables/use-sync";
 import type { Full } from "@/database/stash";
@@ -17,6 +21,7 @@ import { amountToNumber } from "@/ledger/bill";
 import type { BillCategory } from "@/ledger/type";
 
 const { selectedBookId, ep } = useSync();
+const history = useHistoryRange();
 
 const startEdit = inject<(tx: Full<Transaction>) => void>("startEdit");
 
@@ -37,9 +42,9 @@ const fmt = new Intl.NumberFormat("zh-CN", {
     maximumFractionDigits: 2,
 });
 
-const todayRows = computed(() => {
-    const start = dayjs().startOf("day").valueOf();
-    const end = dayjs().add(1, "day").startOf("day").valueOf();
+const visibleRows = computed(() => {
+    const start = history.rangeStart.value.valueOf();
+    const end = history.rangeEnd.value.valueOf();
     return bills.value
         .filter((b) => b.time >= start && b.time < end)
         .sort((a, b) => b.time - a.time);
@@ -66,9 +71,9 @@ function creatorLabelFromKey(creatorKey: string): string {
     return "家庭成员";
 }
 
-const todayPerCreatorHero = computed((): TodayHeroRow[] => {
-    const start = dayjs().startOf("day").valueOf();
-    const end = dayjs().add(1, "day").startOf("day").valueOf();
+const perCreatorHero = computed((): TodayHeroRow[] => {
+    const start = history.rangeStart.value.valueOf();
+    const end = history.rangeEnd.value.valueOf();
     const uid = LoginAPI.getLocalToken()?.accessToken?.trim() ?? "";
 
     const map = new Map<string, { expense: number; income: number }>();
@@ -240,15 +245,23 @@ onUnmounted(() => {
             <div class="journal-scroll-head">
                 <header class="journal-hero">
                     <div class="journal-hero__top">
-                        <p class="journal-kicker">今日概览</p>
+                        <div class="journal-date-nav">
+                            <button type="button" class="journal-date-nav__btn" @click="history.prev" aria-label="上一个">‹</button>
+                            <button type="button" class="journal-date-nav__label" @click="history.goToday" :class="{ 'journal-date-nav__label--today': history.isToday.value }">{{ history.rangeLabel.value }}</button>
+                            <button type="button" class="journal-date-nav__btn" @click="history.next" :disabled="history.isToday.value" aria-label="下一个">›</button>
+                        </div>
+                        <div class="journal-range-tabs">
+                            <button v-for="u in (['day', 'week', 'month'] as RangeUnit[])" :key="u" type="button" class="journal-range-tab" :class="{ 'journal-range-tab--active': history.unit.value === u }" @click="history.setUnit(u)">{{ u === 'day' ? '日' : u === 'week' ? '周' : '月' }}</button>
+                        </div>
+                        <p class="journal-kicker">{{ history.isToday.value ? '今日概览' : history.rangeLabel.value }}</p>
                         <p class="journal-hero__note">各成员 · 仅收支 · 不含转账</p>
                     </div>
                     <div
-                        v-if="todayPerCreatorHero.length === 0"
+                        v-if="perCreatorHero.length === 0"
                         class="journal-hero-empty"
                     >
                         <p class="journal-hero-empty__text">
-                            今日暂无收支（仅统计收入与支出）
+                            {{ history.isToday.value ? '今日暂无收支（仅统计收入与支出）' : '该时段暂无收支（仅统计收入与支出）' }}
                         </p>
                     </div>
                     <div v-else class="journal-stats-by-user">
@@ -259,7 +272,7 @@ onUnmounted(() => {
                         </div>
                         <ul class="journal-stats-by-user__list" role="list">
                             <li
-                                v-for="row in todayPerCreatorHero"
+                                v-for="row in perCreatorHero"
                                 :key="row.creatorKey"
                                 class="journal-stats-by-user__row"
                             >
@@ -291,7 +304,7 @@ onUnmounted(() => {
 
             <section class="journal-section">
                 <h2 class="journal-section-title">
-                    <span class="journal-section-title__text">今日流水</span>
+                    <span class="journal-section-title__text">{{ history.isToday.value ? '今日流水' : '流水记录' }}</span>
                 </h2>
 
                 <div class="journal-list-scroll">
@@ -301,18 +314,16 @@ onUnmounted(() => {
                     </div>
 
                     <div
-                        v-else-if="todayRows.length === 0"
+                        v-else-if="visibleRows.length === 0"
                         class="journal-empty journal-empty--soft"
                     >
-                        <p class="journal-empty__title">今日还没有收支</p>
-                        <p class="journal-empty__hint">
-                            点击底部中间的「记一笔」。
-                        </p>
+                        <p class="journal-empty__title">{{ history.isToday.value ? '今日还没有收支' : '该时段没有流水' }}</p>
+                        <p class="journal-empty__hint">{{ history.isToday.value ? '点击底部中间的「记一笔」。' : '换个时间看看，或记一笔新的。' }}</p>
                     </div>
 
                     <ol v-else class="journal-timeline" role="list">
                         <li
-                            v-for="(tx, i) in todayRows"
+                            v-for="(tx, i) in visibleRows"
                             :key="tx.id"
                             class="journal-timeline__item"
                             :style="{ animationDelay: `${0.06 + i * 0.045}s` }"
@@ -526,6 +537,77 @@ onUnmounted(() => {
     margin-bottom: 14px;
     padding-left: 2px;
     padding-right: 4px;
+}
+
+.journal-date-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+.journal-date-nav__btn {
+    border: none;
+    background: rgba(var(--ledger-accent-rgb), 0.08);
+    color: var(--ledger-ink-muted);
+    font-size: 20px;
+    font-weight: 700;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+}
+.journal-date-nav__btn:active {
+    background: rgba(var(--ledger-accent-rgb), 0.16);
+}
+.journal-date-nav__btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+.journal-date-nav__label {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-family: var(--ledger-font-display);
+    font-size: clamp(1.2rem, 4.5vw, 1.45rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--journal-ink);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+.journal-date-nav__label:active {
+    background: rgba(var(--ledger-accent-rgb), 0.06);
+}
+.journal-date-nav__label--today {
+    color: var(--journal-accent);
+}
+.journal-range-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.journal-range-tab {
+    border: 1px solid rgba(var(--ledger-accent-rgb), 0.12);
+    background: rgba(255, 254, 251, 0.7);
+    color: var(--ledger-ink-muted);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.journal-range-tab--active {
+    background: rgba(var(--ledger-accent-rgb), 0.12);
+    color: var(--ledger-accent-deep);
+    border-color: rgba(var(--ledger-accent-rgb), 0.25);
 }
 
 .journal-hero__note {
