@@ -6,7 +6,7 @@ import {
     showLoadingToast,
     showToast,
 } from "vant";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, inject, onMounted, onUnmounted, ref } from "vue";
 import { LoginAPI } from "@/api/endpoints/gitee";
 import { buildCategoryLabelMap } from "@/composables/use-ledger-meta";
 import { useSync } from "@/composables/use-sync";
@@ -17,6 +17,8 @@ import { amountToNumber } from "@/ledger/bill";
 import type { BillCategory } from "@/ledger/type";
 
 const { selectedBookId, ep } = useSync();
+
+const startEdit = inject<(tx: Full<Transaction>) => void>("startEdit");
 
 const bills = ref<Full<Transaction>[]>([]);
 const usersList = ref<User[]>([]);
@@ -351,6 +353,14 @@ onUnmounted(() => {
                                     </div>
                                 </div>
                                 <template #right>
+                                    <van-button
+                                        square
+                                        type="primary"
+                                        class="swipe-side-btn swipe-side-btn--edit"
+                                        @click.stop="startEdit?.(tx)"
+                                    >
+                                        编辑
+                                    </van-button>
                                     <van-button
                                         square
                                         type="danger"
@@ -778,6 +788,11 @@ onUnmounted(() => {
     font-weight: 700;
     line-height: 1.2;
     white-space: pre-line;
+}
+
+.swipe-side-btn--edit {
+    background: var(--ledger-accent);
+    color: #fff;
 }
 
 .journal-row__card {

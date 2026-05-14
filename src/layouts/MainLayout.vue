@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import RecordTransactionSheet from "@/components/RecordTransactionSheet.vue";
 import { useEntryBookSync } from "@/composables/use-entry-book-sync";
 import { usePeriodicBookFullSync } from "@/composables/use-periodic-book-sync";
 import { useSyncStatus } from "@/composables/use-sync-status";
+import type { Full } from "@/database/stash";
+import type { Transaction } from "@/database/tables/transaction";
 
 const router = useRouter();
 const route = useRoute();
@@ -14,6 +16,18 @@ const { syncing, pending, triggerSync } = useSyncStatus();
 usePeriodicBookFullSync(entryReady);
 
 const showRecordSheet = ref(false);
+const editingTx = ref<Full<Transaction> | null>(null);
+
+function startEdit(tx: Full<Transaction>) {
+    editingTx.value = tx;
+    showRecordSheet.value = true;
+}
+
+function onRecordClose() {
+    editingTx.value = null;
+}
+
+provide("startEdit", startEdit);
 
 /** 子页自带 van-nav-bar，隐藏外壳顶栏避免双层遮挡 */
 const hideShellHeader = computed(
@@ -51,6 +65,7 @@ const goTab = (index: number) => {
 };
 
 const onRecordClick = () => {
+    editingTx.value = null;
     showRecordSheet.value = true;
 };
 
@@ -139,7 +154,12 @@ const onSyncClick = async () => {
             </button>
         </nav>
 
-        <RecordTransactionSheet v-model:show="showRecordSheet" />
+        <RecordTransactionSheet
+            v-model:show="showRecordSheet"
+            :editing-tx="editingTx"
+            @update:show="onRecordClose"
+            @submitted="onRecordClose"
+        />
     </div>
 </template>
 
