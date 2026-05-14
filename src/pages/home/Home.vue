@@ -345,17 +345,19 @@ onUnmounted(() => {
                                                 <p class="journal-row__what">
                                                     {{ purposeLine(tx) }}
                                                 </p>
-                                                <div v-if="tx.type !== 'transfer' && tx.accountId" class="journal-row__account">
-                                                    <span class="journal-row__account-tag">{{ accountName(tx.accountId) }}</span>
+                                                <div class="journal-row__bottom">
+                                                    <div v-if="tx.type !== 'transfer' && tx.accountId" class="journal-row__account">
+                                                        <span class="journal-row__account-tag">{{ accountName(tx.accountId) }}</span>
+                                                    </div>
+                                                    <div v-else-if="tx.type === 'transfer' && (tx.accountId || tx.transferTo)" class="journal-row__account">
+                                                        <span v-if="tx.accountId" class="journal-row__account-tag">{{ accountName(tx.accountId) }}</span>
+                                                        <span v-if="tx.accountId && tx.transferTo" class="journal-row__account-arrow">→</span>
+                                                        <span v-if="tx.transferTo" class="journal-row__account-tag">{{ accountName(tx.transferTo) }}</span>
+                                                    </div>
+                                                    <p class="journal-row__money">
+                                                        {{ amountLabel(tx) }}
+                                                    </p>
                                                 </div>
-                                                <div v-else-if="tx.type === 'transfer' && (tx.accountId || tx.transferTo)" class="journal-row__account">
-                                                    <span v-if="tx.accountId" class="journal-row__account-tag">{{ accountName(tx.accountId) }}</span>
-                                                    <span v-if="tx.accountId && tx.transferTo" class="journal-row__account-arrow">→</span>
-                                                    <span v-if="tx.transferTo" class="journal-row__account-tag">{{ accountName(tx.transferTo) }}</span>
-                                                </div>
-                                                <p class="journal-row__money">
-                                                    {{ amountLabel(tx) }}
-                                                </p>
                                             </div>
                                         </div>
                                         <template #right>
@@ -751,18 +753,25 @@ onUnmounted(() => {
 }
 
 .journal-row__what {
-    margin: 0 0 10px;
+    margin: 0 0 8px;
     font-size: 13px;
     font-weight: 500;
     line-height: 1.45;
     color: var(--journal-muted);
 }
 
+.journal-row__bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
 .journal-row__account {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 8px;
+    min-width: 0;
 }
 
 .journal-row__account-tag {
@@ -786,7 +795,7 @@ onUnmounted(() => {
     font-weight: 500;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.03em;
-    text-align: right;
+    flex-shrink: 0;
 }
 
 .journal-row.is-expense .journal-row__money {
@@ -815,7 +824,6 @@ onUnmounted(() => {
 .journal-search-bar {
     flex-shrink: 0;
     padding: 0 2px;
-    margin-bottom: 14px;
     opacity: 0;
     animation: journal-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.08s forwards;
 }
