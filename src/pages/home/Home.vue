@@ -7,11 +7,6 @@ import {
     showToast,
 } from "vant";
 import { computed, inject, onMounted, onUnmounted, ref } from "vue";
-import { LoginAPI } from "@/api/endpoints/gitee";
-import {
-    type RangeUnit,
-    useHistoryRange,
-} from "@/composables/use-history-range";
 import { buildCategoryLabelMap } from "@/composables/use-ledger-meta";
 import { useSync } from "@/composables/use-sync";
 import { useTxFilter } from "@/composables/use-tx-filter";
@@ -22,7 +17,6 @@ import { amountToNumber } from "@/ledger/bill";
 import type { BillCategory } from "@/ledger/type";
 
 const { selectedBookId, ep } = useSync();
-const history = useHistoryRange();
 
 const startEdit = inject<(tx: Full<Transaction>) => void>("startEdit");
 
@@ -45,11 +39,28 @@ const fmt = new Intl.NumberFormat("zh-CN", {
 
 const showFilterSheet = ref(false);
 
+const todayStart = computed(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).valueOf();
+});
+
+const todayEnd = computed(() => {
+    return todayStart.value + 24 * 60 * 60 * 1000;
+});
+
 const allRangeRows = computed(() => {
-    const start = history.rangeStart.value.valueOf();
-    const end = history.rangeEnd.value.valueOf();
+    const f = txFilter.filters.value;
+    if (f.dateStart !== null || f.dateEnd !== null) {
+        return bills.value
+            .filter((b) => {
+                if (f.dateStart !== null && b.time < f.dateStart) return false;
+                if (f.dateEnd !== null && b.time >= f.dateEnd) return false;
+                return true;
+            })
+            .sort((a, b) => b.time - a.time);
+    }
     return bills.value
-        .filter((b) => b.time >= start && b.time < end)
+        .filter((b) => b.time >= todayStart.value && b.time < todayEnd.value)
         .sort((a, b) => b.time - a.time);
 });
 
@@ -62,15 +73,6 @@ const visibleRows = computed(() => {
     return allRangeRows.value;
 });
 
-/** 顶部 hero：今日每位成员的收支合计（仅 income/expense，不含转账） */
-type TodayHeroRow = {
-    creatorKey: string;
-    label: string;
-    isSelf: boolean;
-    expenseLabel: string;
-    incomeLabel: string;
-};
-
 function creatorLabelFromKey(creatorKey: string): string {
     const u = usersList.value.find((x) => String(x.id) === creatorKey);
     const nick = u?.nickname?.trim();
@@ -82,49 +84,6 @@ function creatorLabelFromKey(creatorKey: string): string {
     }
     return "家庭成员";
 }
-
-const perCreatorHero = computed((): TodayHeroRow[] => {
-    const start = history.rangeStart.value.valueOf();
-    const end = history.rangeEnd.value.valueOf();
-    const uid = LoginAPI.getLocalToken()?.accessToken?.trim() ?? "";
-
-    const map = new Map<string, { expense: number; income: number }>();
-    for (const b of bills.value) {
-        if (b.time < start || b.time >= end) {
-            continue;
-        }
-        if (b.type !== "expense" && b.type !== "income") {
-            continue;
-        }
-        const k = String(b.creatorId);
-        const cur = map.get(k) ?? { expense: 0, income: 0 };
-        if (b.type === "expense") {
-            cur.expense += b.amount;
-        } else {
-            cur.income += b.amount;
-        }
-        map.set(k, cur);
-    }
-
-    const rows: TodayHeroRow[] = [...map.entries()].map(
-        ([creatorKey, sums]) => ({
-            creatorKey,
-            label: creatorLabelFromKey(creatorKey),
-            isSelf: uid !== "" && creatorKey === uid,
-            expenseLabel: fmt.format(amountToNumber(sums.expense)),
-            incomeLabel: fmt.format(amountToNumber(sums.income)),
-        }),
-    );
-
-    rows.sort((a, b) => {
-        if (a.isSelf !== b.isSelf) {
-            return a.isSelf ? -1 : 1;
-        }
-        return a.label.localeCompare(b.label, "zh-CN");
-    });
-
-    return rows;
-});
 
 function purposeLine(tx: Full<Transaction>): string {
     const cat = categoryLabelMap.value.get(tx.categoryId) ?? tx.categoryId;
@@ -247,73 +206,7 @@ onUnmounted(() => {
 
 <template>
     <div class="journal-page">
-        <div class="journal-atmosphere" aria-hidden="true">
-            <div class="journal-atmosphere__orb journal-atmosphere__orb--a" />
-            <div class="journal-atmosphere__orb journal-atmosphere__orb--b" />
-            <div class="journal-atmosphere__grain" />
-        </div>
-
         <div class="journal-inner journal-inner--layout">
-            <div class="journal-scroll-head">
-                <header class="journal-hero">
-                    <div class="journal-hero__top">
-                        <div class="journal-date-nav">
-                            <button type="button" class="journal-date-nav__btn" @click="history.prev" aria-label="上一个">‹</button>
-                            <button type="button" class="journal-date-nav__label" @click="history.goToday" :class="{ 'journal-date-nav__label--today': history.isToday.value }">{{ history.rangeLabel.value }}</button>
-                            <button type="button" class="journal-date-nav__btn" @click="history.next" :disabled="history.isToday.value" aria-label="下一个">›</button>
-                        </div>
-                        <div class="journal-range-tabs">
-                            <button v-for="u in (['day', 'week', 'month'] as RangeUnit[])" :key="u" type="button" class="journal-range-tab" :class="{ 'journal-range-tab--active': history.unit.value === u }" @click="history.setUnit(u)">{{ u === 'day' ? '日' : u === 'week' ? '周' : '月' }}</button>
-                        </div>
-                        <p class="journal-kicker">{{ history.isToday.value ? '今日概览' : history.rangeLabel.value }}</p>
-                        <p class="journal-hero__note">各成员 · 仅收支 · 不含转账</p>
-                    </div>
-                    <div
-                        v-if="perCreatorHero.length === 0"
-                        class="journal-hero-empty"
-                    >
-                        <p class="journal-hero-empty__text">
-                            {{ history.isToday.value ? '今日暂无收支（仅统计收入与支出）' : '该时段暂无收支（仅统计收入与支出）' }}
-                        </p>
-                    </div>
-                    <div v-else class="journal-stats-by-user">
-                        <div class="journal-stats-by-user__head" aria-hidden="true">
-                            <span class="journal-stats-by-user__h-name">成员</span>
-                            <span class="journal-stats-by-user__h-out">支出</span>
-                            <span class="journal-stats-by-user__h-in">收入</span>
-                        </div>
-                        <ul class="journal-stats-by-user__list" role="list">
-                            <li
-                                v-for="row in perCreatorHero"
-                                :key="row.creatorKey"
-                                class="journal-stats-by-user__row"
-                            >
-                                <span class="journal-stats-by-user__name">
-                                    {{ row.label }}
-                                    <span
-                                        v-if="row.isSelf"
-                                        class="journal-stats-by-user__me"
-                                    >
-                                        我
-                                    </span>
-                                </span>
-                                <span
-                                    class="journal-stats-by-user__num journal-stats-by-user__num--out"
-                                >
-                                    {{ row.expenseLabel }}
-                                </span>
-                                <span
-                                    class="journal-stats-by-user__num journal-stats-by-user__num--in"
-                                >
-                                    {{ row.incomeLabel }}
-                                </span>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="journal-hero__accent" aria-hidden="true" />
-                </header>
-            </div>
-
             <div class="journal-search-bar">
                 <button
                     type="button"
@@ -330,7 +223,7 @@ onUnmounted(() => {
             <section class="journal-section">
                 <h2 class="journal-section-title">
                     <span class="journal-section-title__text">
-                        {{ history.isToday.value && !txFilter.hasActiveFilters.value ? '今日流水' : `流水 · ${visibleRows.length} 条` }}
+                        {{ txFilter.hasActiveFilters.value ? `流水 · ${visibleRows.length} 条` : '今日流水' }}
                     </span>
                 </h2>
 
@@ -344,8 +237,8 @@ onUnmounted(() => {
                         v-else-if="visibleRows.length === 0"
                         class="journal-empty journal-empty--soft"
                     >
-                        <p class="journal-empty__title">{{ history.isToday.value ? '今日还没有收支' : '该时段没有流水' }}</p>
-                        <p class="journal-empty__hint">{{ history.isToday.value ? '点击底部中间的「记一笔」。' : '换个时间看看，或记一笔新的。' }}</p>
+                        <p class="journal-empty__title">今日还没有收支</p>
+                        <p class="journal-empty__hint">点击底部中间的「记一笔」。</p>
                     </div>
 
                     <ol v-else class="journal-timeline" role="list">
@@ -490,63 +383,6 @@ onUnmounted(() => {
     color: var(--journal-ink);
 }
 
-.journal-atmosphere {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.journal-atmosphere__orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(54px);
-    opacity: 0.46;
-}
-
-.journal-atmosphere__orb--a {
-    width: min(88vw, 400px);
-    height: min(88vw, 400px);
-    top: -16%;
-    left: -26%;
-    background: radial-gradient(
-        circle,
-        rgba(var(--ledger-warm-rgb), 0.14) 0%,
-        transparent 72%
-    );
-    animation: journal-float 19s ease-in-out infinite;
-}
-
-.journal-atmosphere__orb--b {
-    width: min(72vw, 300px);
-    height: min(72vw, 300px);
-    bottom: 20%;
-    right: -24%;
-    background: radial-gradient(
-        circle,
-        rgba(var(--ledger-accent-rgb), 0.28) 0%,
-        transparent 70%
-    );
-    animation: journal-float 21s ease-in-out infinite reverse;
-}
-
-.journal-atmosphere__grain {
-    position: absolute;
-    inset: 0;
-    opacity: 0.038;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-@keyframes journal-float {
-    0%,
-    100% {
-        transform: translate(0, 0) scale(1);
-    }
-    50% {
-        transform: translate(2%, -2%) scale(1.03);
-    }
-}
-
 .journal-inner {
     position: relative;
     z-index: 1;
@@ -563,11 +399,6 @@ onUnmounted(() => {
 
 .journal-inner--layout {
     gap: 16px;
-}
-
-.journal-scroll-head {
-    flex-shrink: 0;
-    padding-top: 14px;
 }
 
 .journal-section {
@@ -587,257 +418,6 @@ onUnmounted(() => {
     overscroll-behavior: contain;
     /* 底栏 + 记一笔球占位 */
     padding-bottom: calc(var(--ledger-pwa-tabbar-h, 68px) + 8px);
-}
-
-.journal-hero {
-    position: relative;
-    margin-bottom: 0;
-    padding: 18px 16px 18px;
-    border-radius: 22px;
-    border: 1px solid rgba(var(--ledger-accent-rgb), 0.09);
-    background: linear-gradient(
-        165deg,
-        rgba(255, 254, 251, 0.98) 0%,
-        var(--ledger-paper-card) 55%,
-        var(--journal-paper) 100%
-    );
-    box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.9) inset,
-        0 20px 48px -34px var(--ledger-shadow-ink);
-    overflow: hidden;
-    opacity: 0;
-    animation: journal-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-.journal-hero__top {
-    margin-bottom: 14px;
-    padding-left: 2px;
-    padding-right: 4px;
-}
-
-.journal-date-nav {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 10px;
-}
-.journal-date-nav__btn {
-    border: none;
-    background: rgba(var(--ledger-accent-rgb), 0.08);
-    color: var(--ledger-ink-muted);
-    font-size: 20px;
-    font-weight: 700;
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s ease;
-}
-.journal-date-nav__btn:active {
-    background: rgba(var(--ledger-accent-rgb), 0.16);
-}
-.journal-date-nav__btn:disabled {
-    opacity: 0.35;
-    cursor: default;
-}
-.journal-date-nav__label {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    background: transparent;
-    font-family: var(--ledger-font-display);
-    font-size: clamp(1.2rem, 4.5vw, 1.45rem);
-    font-weight: 400;
-    letter-spacing: -0.02em;
-    color: var(--journal-ink);
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 8px;
-    transition: background 0.15s ease;
-}
-.journal-date-nav__label:active {
-    background: rgba(var(--ledger-accent-rgb), 0.06);
-}
-.journal-date-nav__label--today {
-    color: var(--journal-accent);
-}
-.journal-range-tabs {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 10px;
-}
-.journal-range-tab {
-    border: 1px solid rgba(var(--ledger-accent-rgb), 0.12);
-    background: rgba(255, 254, 251, 0.7);
-    color: var(--ledger-ink-muted);
-    font-size: 12px;
-    font-weight: 700;
-    padding: 5px 14px;
-    border-radius: 999px;
-    cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-.journal-range-tab--active {
-    background: rgba(var(--ledger-accent-rgb), 0.12);
-    color: var(--ledger-accent-deep);
-    border-color: rgba(var(--ledger-accent-rgb), 0.25);
-}
-
-.journal-hero__note {
-    margin: 8px 0 0;
-    padding-left: 2px;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.4;
-    color: var(--ledger-ink-subtle);
-}
-
-.journal-hero__accent {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 5px;
-    background: linear-gradient(
-        180deg,
-        var(--journal-accent) 0%,
-        rgba(var(--ledger-warm-rgb), 0.35) 100%
-    );
-    border-radius: 20px 0 0 20px;
-}
-
-.journal-kicker {
-    margin: 0;
-    font-family: var(--ledger-font-display);
-    font-size: clamp(1.35rem, 5vw, 1.6rem);
-    font-weight: 400;
-    letter-spacing: -0.02em;
-    line-height: 1.15;
-    color: var(--journal-ink);
-}
-
-.journal-hero-empty {
-    padding: 10px 8px 14px;
-}
-
-.journal-hero-empty__text {
-    margin: 0;
-    padding-left: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.45;
-    color: var(--journal-muted);
-}
-
-.journal-stats-by-user {
-    padding: 2px 2px 0;
-}
-
-.journal-stats-by-user__head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 8px 12px;
-    align-items: baseline;
-    padding: 10px 12px 10px 14px;
-    margin-bottom: 6px;
-    border-radius: 12px;
-    background: rgba(var(--ledger-accent-rgb), 0.06);
-    border: 1px solid rgba(var(--ledger-accent-rgb), 0.08);
-}
-
-.journal-stats-by-user__h-name {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--journal-muted);
-}
-
-.journal-stats-by-user__h-out,
-.journal-stats-by-user__h-in {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--journal-muted);
-    text-align: right;
-    min-width: 5.5rem;
-}
-
-.journal-stats-by-user__list {
-    margin: 0;
-    padding: 6px 4px 4px;
-    list-style: none;
-    max-height: min(38vh, 240px);
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 14px;
-    background: rgba(255, 254, 251, 0.65);
-    border: 1px solid rgba(28, 25, 23, 0.05);
-}
-
-.journal-stats-by-user__row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 8px 12px;
-    align-items: baseline;
-    padding: 11px 12px;
-    border-bottom: 1px solid rgba(28, 25, 23, 0.05);
-    transition: background 0.15s ease;
-}
-
-.journal-stats-by-user__row:last-child {
-    border-bottom: none;
-}
-
-.journal-stats-by-user__row:active {
-    background: rgba(var(--ledger-accent-rgb), 0.04);
-}
-
-.journal-stats-by-user__name {
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    color: var(--journal-ink);
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.journal-stats-by-user__me {
-    display: inline-block;
-    margin-left: 6px;
-    padding: 1px 6px;
-    border-radius: 999px;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    vertical-align: middle;
-    color: var(--journal-accent);
-    background: rgba(var(--ledger-accent-rgb), 0.12);
-}
-
-.journal-stats-by-user__num {
-    font-family: var(--ledger-font-display);
-    font-size: clamp(1rem, 4.2vw, 1.15rem);
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
-    text-align: right;
-    min-width: 5.5rem;
-}
-
-.journal-stats-by-user__num--out {
-    color: var(--journal-expense);
-}
-
-.journal-stats-by-user__num--in {
-    color: var(--journal-income);
 }
 
 .journal-section-title {
