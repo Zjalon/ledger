@@ -33,7 +33,8 @@ provide("startEdit", startEdit);
 const hideShellHeader = computed(
     () =>
         route.name === "profile-categories" ||
-        route.name === "profile-account-order",
+        route.name === "profile-account-order" ||
+        route.name === "profile-scheduled",
 );
 
 const tabs = [

@@ -113,6 +113,12 @@ const onLogout = async () => {
                             router.push({ name: 'profile-account-order' })
                         "
                     />
+                    <van-cell
+                        title="周期记账"
+                        label="自动记录固定收支"
+                        is-link
+                        @click="router.push({ name: 'profile-scheduled' })"
+                    />
                 </van-cell-group>
 
                 <div class="logout-actions">

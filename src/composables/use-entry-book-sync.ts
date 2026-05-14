@@ -1,6 +1,8 @@
 import { showToast } from "vant";
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { LoginAPI } from "@/api/endpoints/gitee";
+import { loadScheduleds, processScheduleds } from "@/composables/use-scheduled";
 import { useSync } from "@/composables/use-sync";
 import { runBookEntrySync } from "@/sync/book-entry-sync";
 
@@ -23,6 +25,27 @@ export function useEntryBookSync() {
         try {
             await runBookEntrySync(ep, bookId);
             entryReady.value = true;
+
+            // Auto-generate scheduled transactions
+            const uid = LoginAPI.getLocalToken()?.accessToken;
+            if (uid) {
+                try {
+                    const scheduleds = await loadScheduleds(ep, bookId, uid);
+                    if (scheduleds.length > 0) {
+                        const count = await processScheduleds(
+                            ep,
+                            bookId,
+                            uid,
+                            scheduleds,
+                        );
+                        if (count > 0) {
+                            showToast(`自动生成了 ${count} 笔周期记账`);
+                        }
+                    }
+                } catch {
+                    /* non-critical, ignore */
+                }
+            }
         } catch (e: unknown) {
             const msg =
                 e instanceof Error ? e.message : String(e ?? "未知错误");

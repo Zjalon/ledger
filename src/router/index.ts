@@ -54,6 +54,12 @@ const router = createRouter({
                     component: () =>
                         import("../pages/profile/accounts/AccountOrder.vue"),
                 },
+                {
+                    path: "profile/scheduled",
+                    name: "profile-scheduled",
+                    component: () =>
+                        import("@/pages/profile/scheduled/ScheduledManage.vue"),
+                },
             ],
         },
     ],
