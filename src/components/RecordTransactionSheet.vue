@@ -22,7 +22,10 @@ import { TransferPresetCategory } from "@/ledger/category-zh-presets";
 import type { PersonalMeta } from "@/ledger/extra-type";
 import type { BillCategory, BillType } from "@/ledger/type";
 
-const props = defineProps<{ show: boolean }>();
+const props = defineProps<{
+    show: boolean;
+    editingTx?: Full<Transaction> | null;
+}>();
 const emit = defineEmits<{
     "update:show": [v: boolean];
     submitted: [];
@@ -37,6 +40,8 @@ const accountId = ref("");
 const transferFromId = ref("");
 const transferToId = ref("");
 const comment = ref("");
+
+const isEditMode = computed(() => Boolean(props.editingTx));
 
 const accounts = ref<Full<Account>[]>([]);
 /** 与资产页一致：meta.personal[用户].accountDisplayOrder */
@@ -162,24 +167,47 @@ watch(
     () => props.show,
     (v) => {
         if (v) {
-            amountStr.value = "";
-            comment.value = "";
-            accountId.value = "";
-            transferFromId.value = "";
-            transferToId.value = "";
-            typeTab.value = 0;
-            void loadContext().then(() => {
-                const pick = mergeCategoriesForType(
-                    "expense",
-                    metaCategories.value,
-                );
-                categoryId.value = pick[0]?.id ?? "";
-                const ordered = sortedAccountsForPicker.value;
-                const firstId = ordered[0]?.id ?? "";
-                accountId.value = firstId;
-                transferFromId.value = firstId;
-                transferToId.value = ordered.length >= 2 ? ordered[1].id : "";
-            });
+            const tx = props.editingTx;
+            if (tx) {
+                // Edit mode: pre-fill from existing transaction
+                typeTab.value =
+                    tx.type === "expense" ? 0 : tx.type === "income" ? 1 : 2;
+                amountStr.value = String(amountToNumber(tx.amount));
+                comment.value = tx.comment ?? "";
+                if (tx.type === "transfer") {
+                    transferFromId.value = tx.accountId ?? "";
+                    transferToId.value = tx.transferTo ?? "";
+                    accountId.value = "";
+                } else {
+                    accountId.value = tx.accountId ?? "";
+                    transferFromId.value = "";
+                    transferToId.value = "";
+                }
+                void loadContext().then(() => {
+                    categoryId.value = tx.categoryId;
+                });
+            } else {
+                // Create mode: reset everything
+                amountStr.value = "";
+                comment.value = "";
+                accountId.value = "";
+                transferFromId.value = "";
+                transferToId.value = "";
+                typeTab.value = 0;
+                void loadContext().then(() => {
+                    const pick = mergeCategoriesForType(
+                        "expense",
+                        metaCategories.value,
+                    );
+                    categoryId.value = pick[0]?.id ?? "";
+                    const ordered = sortedAccountsForPicker.value;
+                    const firstId = ordered[0]?.id ?? "";
+                    accountId.value = firstId;
+                    transferFromId.value = firstId;
+                    transferToId.value =
+                        ordered.length >= 2 ? ordered[1].id : "";
+                });
+            }
         }
     },
 );
@@ -234,33 +262,63 @@ async function submit() {
         }
     }
 
-    const txId = uuidv4();
     const amount = numberToAmount(raw);
-    const base: Omit<Transaction, "accountId" | "transferTo"> = {
-        id: txId,
-        type: billType.value,
-        categoryId:
-            billType.value === "transfer"
-                ? TransferPresetCategory.id
-                : categoryId.value,
-        creatorId: token,
-        comment: comment.value.trim() || undefined,
-        amount,
-        time: Date.now(),
-    };
 
     let row: Transaction;
-    if (billType.value === "transfer") {
-        row = {
-            ...base,
-            accountId: transferFromId.value,
-            transferTo: transferToId.value,
+    if (isEditMode.value && props.editingTx) {
+        // Edit mode: preserve id, creatorId, time from original
+        const orig = props.editingTx;
+        const base: Omit<Transaction, "accountId" | "transferTo"> = {
+            id: orig.id,
+            type: billType.value,
+            categoryId:
+                billType.value === "transfer"
+                    ? TransferPresetCategory.id
+                    : categoryId.value,
+            creatorId: orig.creatorId,
+            comment: comment.value.trim() || undefined,
+            amount,
+            time: orig.time,
         };
+        if (billType.value === "transfer") {
+            row = {
+                ...base,
+                accountId: transferFromId.value,
+                transferTo: transferToId.value,
+            };
+        } else {
+            row = {
+                ...base,
+                accountId: accountId.value,
+            };
+        }
     } else {
-        row = {
-            ...base,
-            accountId: accountId.value,
+        // Create mode
+        const txId = uuidv4();
+        const base: Omit<Transaction, "accountId" | "transferTo"> = {
+            id: txId,
+            type: billType.value,
+            categoryId:
+                billType.value === "transfer"
+                    ? TransferPresetCategory.id
+                    : categoryId.value,
+            creatorId: token,
+            comment: comment.value.trim() || undefined,
+            amount,
+            time: Date.now(),
         };
+        if (billType.value === "transfer") {
+            row = {
+                ...base,
+                accountId: transferFromId.value,
+                transferTo: transferToId.value,
+            };
+        } else {
+            row = {
+                ...base,
+                accountId: accountId.value,
+            };
+        }
     }
 
     try {
@@ -271,7 +329,7 @@ async function submit() {
             },
         ]);
         await ep.toSync();
-        showToast("已记账");
+        showToast(isEditMode.value ? "已更新" : "已记账");
         emit("submitted");
         close();
     } catch (e: unknown) {
@@ -352,8 +410,8 @@ function openToPickerFn() {
                     取消
                 </button>
                 <div class="sheet__title-block">
-                    <span class="sheet__title">记一笔</span>
-                    <span class="sheet__subtitle">快速记录 · 自动同步</span>
+                    <span class="sheet__title">{{ isEditMode ? '编辑' : '记一笔' }}</span>
+                    <span class="sheet__subtitle">{{ isEditMode ? '修改记录' : '快速记录 · 自动同步' }}</span>
                 </div>
                 <span class="sheet__header-spacer" aria-hidden="true" />
             </div>
@@ -458,7 +516,7 @@ function openToPickerFn() {
                     class="sheet__submit"
                     @click="submit"
                 >
-                    保存到账本
+                    {{ isEditMode ? '更新账单' : '保存到账本' }}
                 </van-button>
             </div>
         </div>

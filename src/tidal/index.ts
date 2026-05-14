@@ -173,7 +173,7 @@ export const createTidal = <Item extends BaseItem>({
             remoteStructure,
             localStructure,
         );
-        /** 本次 diff 是否包含 meta.json；为 false 时不应写入本地 meta，否则会误用「仅有 tags」的快照覆盖 categories */
+        /** 本次 diff 是否包含 meta.json；为 false 时不应写入本地 meta，否则会误用快照覆盖 categories */
         const metaInDiff = structure.meta !== undefined;
         const results = await fetchContent(
             storeFullName,

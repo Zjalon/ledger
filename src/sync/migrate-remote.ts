@@ -5,15 +5,12 @@ import {
     PROFILE_USERS_KEY,
 } from "@/sync/book-remote-layout";
 
-/** 旧版 meta 可能缺少 tags 等字段，补齐以免下游报错 */
+/** 旧版 meta 可能缺少字段，补齐以免下游报错 */
 export function normalizeMetaSnapshot(raw: unknown): Record<string, unknown> {
     const o =
         raw && typeof raw === "object" && !Array.isArray(raw)
             ? { ...(raw as Record<string, unknown>) }
             : {};
-    if (!Array.isArray(o.tags)) {
-        o.tags = [];
-    }
     return o;
 }
 

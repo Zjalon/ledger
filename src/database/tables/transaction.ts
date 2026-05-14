@@ -30,14 +30,6 @@ export type Transaction = BaseItem & {
     images?: (File | string)[];
     /** 地址 */
     location?: GeoLocation;
-    /** 标签 ID 列表 */
-    tagIds?: string[];
-    /** 多币种信息 */
-    currency?: {
-        base: string;
-        target: string;
-        amount: number;
-    };
     /** 关联账户 ID */
     accountId?: string;
     /** 转账目标账户 ID（仅 transfer 类型） */

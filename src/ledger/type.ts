@@ -4,21 +4,11 @@ import type { Full } from "@/database/stash";
 import type {
     BillFilter,
     BillFilterView,
-    BillTagGroup,
-    Budget,
-    CustomCurrency,
     PersonalMeta,
     Scheduled,
 } from "./extra-type";
 
-export type {
-    CustomCurrency,
-    PersonalMeta,
-    BillFilter,
-    Budget,
-    BillTagGroup,
-    Scheduled,
-};
+export type { PersonalMeta, BillFilter, Scheduled };
 
 /** 账单类型，代表收入、支出或转账 */
 export type BillType = "income" | "expense" | "transfer";
@@ -72,17 +62,6 @@ export type Bill = {
     images?: (File | string)[];
     /** 账单的地址*/
     location?: GeoLocation;
-    /** 账单的tag，可以为多个*/
-    tagIds?: string[];
-    /** 多币种 */
-    currency?: {
-        // 记账当时设置的本位币
-        base: string;
-        // 记账当时选择的币种
-        target: string;
-        // 记账当时填写的金额
-        amount: number;
-    };
     /** 关联的账户 ID */
     accountId?: string;
     /** 转账目标账户 ID（仅 type="transfer" 时有值） */
@@ -118,42 +97,20 @@ export type BillCategory = {
     defaultSelect?: boolean;
 };
 
-/** 每笔账单可以设置多个BillTag，一般用于标记这些支出或者收入项与某些事件相关联
- * @example 一次旅行中的所有消费事件都可以使用一个tag记录，例如xxx旅行
- */
-export type BillTag = {
-    // tag的唯一标识符
-    id: string;
-    // tag的名称
-    name: string;
-    /** 在编辑账单页选中该标签时，将自动切换金额为对应的币种 */
-    preferCurrency?: string;
-};
-
 // 全局文件配置
 export type GlobalMeta = {
     // 自定义过滤器，可以略过
     customFilters?: BillFilterView[];
-    // 自定义预算，可以略过
-    budgets?: Budget[];
     // 用户自定义配置，可以略过
     personal?: Record<string, PersonalMeta>;
     // 自定义分类，所有新增的分类都应该放在这里
     categories?: BillCategory[];
-    // 自定义Tag，所有tag都应该放在这里
-    tags: BillTag[];
     // 账户列表
     accounts?: BillAccount[];
-    // 本位货币
-    baseCurrency?: string;
-    customCurrencies?: CustomCurrency[];
-    quickCurrencies?: string[];
     map?: {
         amapKey?: string;
         amapSecurityCode?: string;
     };
-    // Widget列表
-    widgets?: any[];
 };
 
 // 这是最终导出的核心JSON数据结构，使用这个数据结构可以直接被解析成可以识别的数据
