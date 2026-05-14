@@ -9,6 +9,9 @@ export type TxFilters = {
     maxAmount: number | null;
     types: BillType[];
     categoryIds: string[];
+    dateStart: number | null;
+    dateEnd: number | null;
+    creatorIds: string[];
 };
 
 export function useTxFilter(allRows: () => Full<Transaction>[]) {
@@ -18,6 +21,9 @@ export function useTxFilter(allRows: () => Full<Transaction>[]) {
         maxAmount: null,
         types: [],
         categoryIds: [],
+        dateStart: null,
+        dateEnd: null,
+        creatorIds: [],
     });
 
     const hasActiveFilters = computed(() => {
@@ -27,7 +33,10 @@ export function useTxFilter(allRows: () => Full<Transaction>[]) {
             f.minAmount !== null ||
             f.maxAmount !== null ||
             f.types.length > 0 ||
-            f.categoryIds.length > 0
+            f.categoryIds.length > 0 ||
+            f.dateStart !== null ||
+            f.dateEnd !== null ||
+            f.creatorIds.length > 0
         );
     });
 
@@ -61,6 +70,18 @@ export function useTxFilter(allRows: () => Full<Transaction>[]) {
             rows = rows.filter((tx) => catSet.has(tx.categoryId));
         }
 
+        if (f.dateStart !== null) {
+            rows = rows.filter((tx) => tx.time >= f.dateStart!);
+        }
+        if (f.dateEnd !== null) {
+            rows = rows.filter((tx) => tx.time < f.dateEnd!);
+        }
+
+        if (f.creatorIds.length > 0) {
+            const creatorSet = new Set(f.creatorIds);
+            rows = rows.filter((tx) => creatorSet.has(String(tx.creatorId)));
+        }
+
         return rows;
     });
 
@@ -71,6 +92,9 @@ export function useTxFilter(allRows: () => Full<Transaction>[]) {
             maxAmount: null,
             types: [],
             categoryIds: [],
+            dateStart: null,
+            dateEnd: null,
+            creatorIds: [],
         };
     }
 
