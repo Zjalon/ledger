@@ -45,6 +45,10 @@ const formComment = ref("");
 const formRepeatUnit = ref<"month" | "week" | "day" | "year">("month");
 const formRepeatValue = ref(1);
 const formEnabled = ref(true);
+const showCategoryPicker = ref(false);
+const showAccountPicker = ref(false);
+const showFromPicker = ref(false);
+const showToPicker = ref(false);
 
 const billType = computed<BillType>(() => {
     if (formTypeTab.value === 0) return "expense";
@@ -160,17 +164,21 @@ async function saveForm() {
             billType.value === "transfer" ? formTransferToId.value : undefined,
     };
 
+    const editing = editingId.value
+        ? scheduleds.value.find((s) => s.id === editingId.value)
+        : undefined;
+
     const entry: Scheduled = {
         id: editingId.value ?? uuidv4(),
         title: formTitle.value.trim(),
-        start: Date.now(),
+        start: editing?.start ?? Date.now(),
         template,
         enabled: formEnabled.value,
         repeat: {
             unit: formRepeatUnit.value,
             value: formRepeatValue.value,
         },
-        latest: undefined,
+        latest: editing?.latest,
     };
 
     const existing = scheduleds.value.filter((s) => s.id !== entry.id);
@@ -336,15 +344,17 @@ const repeatLabels: Record<string, string> = {
                             title="分类"
                             :value="categoriesPick.find((c) => c.id === formCategoryId)?.name ?? '请选择'"
                             is-link
+                            @click="showCategoryPicker = true"
                         />
                         <van-cell
                             v-if="billType !== 'transfer'"
                             title="账户"
                             :value="accountName(formAccountId)"
                             is-link
+                            @click="showAccountPicker = true"
                         />
-                        <van-cell v-if="billType === 'transfer'" title="转出" :value="accountName(formTransferFromId)" is-link />
-                        <van-cell v-if="billType === 'transfer'" title="转入" :value="accountName(formTransferToId)" is-link />
+                        <van-cell v-if="billType === 'transfer'" title="转出" :value="accountName(formTransferFromId)" is-link @click="showFromPicker = true" />
+                        <van-cell v-if="billType === 'transfer'" title="转入" :value="accountName(formTransferToId)" is-link @click="showToPicker = true" />
                         <van-field v-model="formComment" label="备注" placeholder="可选" maxlength="100" />
                     </van-cell-group>
 
@@ -365,6 +375,94 @@ const repeatLabels: Record<string, string> = {
                             </template>
                         </van-cell>
                     </van-cell-group>
+                </div>
+            </div>
+        </van-popup>
+
+        <van-popup v-model:show="showCategoryPicker" position="bottom" round safe-area-inset-bottom class="sched-pick-popup">
+            <div class="pick-sheet">
+                <div class="pick-sheet__header">
+                    <span class="pick-sheet__title">选择分类</span>
+                    <button type="button" class="pick-sheet__close" @click="showCategoryPicker = false">完成</button>
+                </div>
+                <div class="pick-sheet__list">
+                    <button
+                        v-for="c in categoriesPick"
+                        :key="c.id"
+                        type="button"
+                        class="pick-item"
+                        :class="{ 'pick-item--active': c.id === formCategoryId }"
+                        @click="formCategoryId = c.id; showCategoryPicker = false"
+                    >
+                        <span class="pick-item__icon">{{ c.icon ?? '📂' }}</span>
+                        <span class="pick-item__name">{{ c.name }}</span>
+                    </button>
+                </div>
+            </div>
+        </van-popup>
+
+        <van-popup v-model:show="showAccountPicker" position="bottom" round safe-area-inset-bottom class="sched-pick-popup">
+            <div class="pick-sheet">
+                <div class="pick-sheet__header">
+                    <span class="pick-sheet__title">选择账户</span>
+                    <button type="button" class="pick-sheet__close" @click="showAccountPicker = false">完成</button>
+                </div>
+                <div class="pick-sheet__list">
+                    <button
+                        v-for="a in accounts"
+                        :key="a.id"
+                        type="button"
+                        class="pick-item"
+                        :class="{ 'pick-item--active': a.id === formAccountId }"
+                        @click="formAccountId = a.id; showAccountPicker = false"
+                    >
+                        <span class="pick-item__icon">💰</span>
+                        <span class="pick-item__name">{{ a.name }}</span>
+                    </button>
+                </div>
+            </div>
+        </van-popup>
+
+        <van-popup v-model:show="showFromPicker" position="bottom" round safe-area-inset-bottom class="sched-pick-popup">
+            <div class="pick-sheet">
+                <div class="pick-sheet__header">
+                    <span class="pick-sheet__title">转出账户</span>
+                    <button type="button" class="pick-sheet__close" @click="showFromPicker = false">完成</button>
+                </div>
+                <div class="pick-sheet__list">
+                    <button
+                        v-for="a in accounts"
+                        :key="a.id"
+                        type="button"
+                        class="pick-item"
+                        :class="{ 'pick-item--active': a.id === formTransferFromId }"
+                        @click="formTransferFromId = a.id; showFromPicker = false"
+                    >
+                        <span class="pick-item__icon">💰</span>
+                        <span class="pick-item__name">{{ a.name }}</span>
+                    </button>
+                </div>
+            </div>
+        </van-popup>
+
+        <van-popup v-model:show="showToPicker" position="bottom" round safe-area-inset-bottom class="sched-pick-popup">
+            <div class="pick-sheet">
+                <div class="pick-sheet__header">
+                    <span class="pick-sheet__title">转入账户</span>
+                    <button type="button" class="pick-sheet__close" @click="showToPicker = false">完成</button>
+                </div>
+                <div class="pick-sheet__list">
+                    <button
+                        v-for="a in accounts"
+                        :key="a.id"
+                        type="button"
+                        class="pick-item"
+                        :class="{ 'pick-item--active': a.id === formTransferToId }"
+                        @click="formTransferToId = a.id; showToPicker = false"
+                    >
+                        <span class="pick-item__icon">💰</span>
+                        <span class="pick-item__name">{{ a.name }}</span>
+                    </button>
                 </div>
             </div>
         </van-popup>
@@ -553,5 +651,71 @@ const repeatLabels: Record<string, string> = {
 .sched-form__repeat-label {
     font-size: 14px;
     color: var(--ledger-ink-muted);
+}
+.sched-pick-popup :deep(.van-popup__content) {
+    max-height: 60vh;
+    border-radius: 20px 20px 0 0;
+    background: var(--ledger-paper);
+}
+.pick-sheet {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.pick-sheet__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(var(--ledger-accent-rgb), 0.08);
+}
+.pick-sheet__title {
+    font-family: var(--ledger-font-display);
+    font-size: 18px;
+    font-weight: 400;
+}
+.pick-sheet__close {
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ledger-accent-deep);
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 8px;
+}
+.pick-sheet__list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+.pick-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 12px 16px;
+    font: inherit;
+    font-size: 15px;
+    color: var(--ledger-ink);
+    cursor: pointer;
+    text-align: left;
+}
+.pick-item:active {
+    background: rgba(var(--ledger-accent-rgb), 0.06);
+}
+.pick-item--active {
+    color: var(--ledger-accent-deep);
+    font-weight: 600;
+}
+.pick-item__icon {
+    font-size: 20px;
+    width: 28px;
+    text-align: center;
+}
+.pick-item__name {
+    flex: 1;
 }
 </style>

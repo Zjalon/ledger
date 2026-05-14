@@ -437,9 +437,9 @@ onUnmounted(() => {
                     <div class="filter-field">
                         <label class="filter-field__label">金额范围</label>
                         <div class="filter-field__row">
-                            <input v-model.number="txFilter.filters.value.minAmount" type="number" inputmode="decimal" class="filter-field__input filter-field__input--half" placeholder="最小" min="0" />
+                            <input :value="txFilter.filters.value.minAmount ?? ''" type="number" inputmode="decimal" class="filter-field__input filter-field__input--half" placeholder="最小" min="0" @input="txFilter.filters.value.minAmount = $event.target.value === '' ? null : Number($event.target.value)" />
                             <span class="filter-field__sep">–</span>
-                            <input v-model.number="txFilter.filters.value.maxAmount" type="number" inputmode="decimal" class="filter-field__input filter-field__input--half" placeholder="最大" min="0" />
+                            <input :value="txFilter.filters.value.maxAmount ?? ''" type="number" inputmode="decimal" class="filter-field__input filter-field__input--half" placeholder="最大" min="0" @input="txFilter.filters.value.maxAmount = $event.target.value === '' ? null : Number($event.target.value)" />
                         </div>
                     </div>
                     <div class="filter-field">
